@@ -1,6 +1,7 @@
 use std::env;
 use std::io::{self, Stdout, Write};
 
+use crossterm::cursor::MoveToNextLine;
 use crossterm::style::SetColors;
 use crossterm::{
     cursor,
@@ -44,7 +45,7 @@ fn main() -> io::Result<()> {
     f.read_to_end(&mut buffer).unwrap();
 
     stdout.execute(Clear(ClearType::All))?;
-
+    stdout.execute(cursor::Hide)?;
     let _ = enable_raw_mode();
     while !exit {
         if refresh {
@@ -147,6 +148,18 @@ fn main() -> io::Result<()> {
                     selection_mode = false;
                     refresh = true;
                 }
+                KeyCode::Char('a') => {
+                    buffer.insert(cursor_index + 1, 0);
+                    refresh = true;
+                }
+                KeyCode::Char('x') => {
+                    if buffer.len() > 0 {
+                        clipboard.clear();
+                        clipboard.push(buffer[cursor_index]);
+                        buffer.remove(cursor_index);
+                        refresh = true;
+                    }
+                }
                 KeyCode::Char('y') => {
                     clipboard.clear();
                     if selection_mode {
@@ -210,7 +223,8 @@ fn write_nibble(buffer: &mut Vec<u8>, position: usize, value: u8, nibble_hl: u8)
 }
 
 fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cursor_index: usize, edit_mode: bool, selection_mode: bool) -> io::Result<()> {
-    queue!(stdout, Clear(ClearType::UntilNewLine), cursor::Hide)?;
+    stdout.execute(Clear(ClearType::All))?;
+    // queue!(stdout, Clear(ClearType::UntilNewLine))?;
 
     let mut line: u16 = 0;
     for line_text in RHEXED.iter() {
@@ -253,16 +267,19 @@ fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cur
         queue!(stdout, Print(format!("{:02x}", byte)))?;
         queue!(stdout, SetColors(Colors::new(Reset, Reset)), Print(" "))?;
 
-        if i % 16 == 15 {
-            queue!(stdout, PrintStyledContent("  |  ".green()))?;
+        if i % 16 == 15 || i == buffer.len() - 1 {
+        // if i % 16 == 15 {
+            queue!(stdout, cursor::MoveTo(60, line + 1 + char_line as u16), PrintStyledContent("  |  ".green()))?;
             for c in 0..16 {
-                if buffer[char_line * 16 + c] >= 32 && buffer[char_line * 16 + c] <= 126 {
-                    queue!(
-                        stdout,
-                        Print(format!("{}", buffer[char_line * 16 + c] as char))
-                    )?;
-                } else {
-                    queue!(stdout, Print("."))?;
+                if char_line * 16 + c < buffer.len() {
+                    if buffer[char_line * 16 + c] >= 32 && buffer[char_line * 16 + c] <= 126 {
+                        queue!(
+                            stdout,
+                            Print(format!("{}", buffer[char_line * 16 + c] as char))
+                        )?;
+                    } else {
+                        queue!(stdout, Print("."))?;
+                    }
                 }
             }
         }
