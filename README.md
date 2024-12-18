@@ -7,6 +7,11 @@ a WIP hex file editor
 - move to the end of the file: G
 - move to the beginning of the line: 0
 - move to the end of the line: $
+- insert a byte after cursor position: a
+- cut a byte: x
+- copy a byte or a range of selected bytes: y
+- paste a byte or a range of selected bytes: p
+- select multiple byte: v
 - insert mode: i
 - quit insert mode: <ESC>
 - write file: w
