@@ -24,8 +24,8 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 - hjkl or arrow     move 
 - g                 move to the beginning of the file
 - G                 move to the end of the file
-- 0                 move to the beginning of the line
-- $                 move to the end of the line
+- (                 move to the beginning of the line
+- )                 move to the end of the line
 - a                 insert a byte after cursor position
 - x                 cut a byte
 - y                 copy a byte or a range of selected bytes

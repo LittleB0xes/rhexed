@@ -133,13 +133,13 @@ fn main() -> io::Result<()> {
                         refresh = true;
                     }
                 }
-                KeyCode::Char('0') => {
+                KeyCode::Char('(') => {
                     let line = cursor_index / 16;
                     cursor_index = line * 16;
                     nibble_index = 0;
                     refresh = true;
                 }
-                KeyCode::Char('$') => {
+                KeyCode::Char(')') => {
                     let line = cursor_index / 16;
                     cursor_index = line * 16 + 15;
                     nibble_index = 0;
