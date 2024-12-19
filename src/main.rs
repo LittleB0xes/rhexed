@@ -101,7 +101,7 @@ fn main() -> io::Result<()> {
                     }
                 }
                 KeyCode::Char('j') | KeyCode::Down=> { 
-                    if cursor_index < buffer.len() - 17 {
+                    if cursor_index < buffer.len() - 16 {
                         cursor_index += 16;
                         nibble_index = 0;
                         refresh = true;
