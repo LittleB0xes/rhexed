@@ -8,7 +8,7 @@ use crossterm::{
     event::{read, Event, KeyCode},
     queue,
     style::{
-        Color::{Red, Reset, White, DarkYellow, Green},
+        Color::{Red, Reset, White, DarkYellow, Green, DarkGrey},
         Colors, Print, PrintStyledContent, Stylize,
     },
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
@@ -222,6 +222,10 @@ fn write_nibble(buffer: &mut Vec<u8>, position: usize, value: u8, nibble_hl: u8)
     buffer[position] |= nibble_bits;
 }
 
+fn is_printable_code(c: u8) -> bool {
+    c >=32 && c <= 126
+}
+
 fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cursor_index: usize, edit_mode: bool, selection_mode: bool) -> io::Result<()> {
     stdout.execute(Clear(ClearType::All))?;
     // queue!(stdout, Clear(ClearType::UntilNewLine))?;
@@ -254,9 +258,13 @@ fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cur
         }
 
         if i == cursor_index && !edit_mode && !selection_mode {
-            queue!(stdout, SetColors(Colors::new(White, Red)))?;
+            queue!(stdout, SetColors(Colors::new(DarkGrey, Red)))?;
         } else if i == cursor_index && edit_mode && !selection_mode{
-            queue!(stdout, SetColors(Colors::new(White, DarkYellow)))?;
+            queue!(stdout, SetColors(Colors::new(DarkGrey, DarkYellow)))?;
+        } else if !edit_mode && !selection_mode && is_printable_code(buffer[i]) {
+
+            queue!(stdout, SetColors(Colors::new(DarkYellow, Reset)))?;
+
 
         } else if selection_mode && i >= cursor_start && i <= cursor_index {
             queue!(stdout, SetColors(Colors::new(White, Green)))?;
@@ -272,13 +280,14 @@ fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cur
             queue!(stdout, cursor::MoveTo(60, line + 1 + char_line as u16), PrintStyledContent("  |  ".green()))?;
             for c in 0..16 {
                 if char_line * 16 + c < buffer.len() {
-                    if buffer[char_line * 16 + c] >= 32 && buffer[char_line * 16 + c] <= 126 {
+                    if is_printable_code(buffer[char_line * 16 + c]) {
                         queue!(
                             stdout,
+                            SetColors(Colors::new(DarkYellow, Reset)),
                             Print(format!("{}", buffer[char_line * 16 + c] as char))
                         )?;
                     } else {
-                        queue!(stdout, Print("."))?;
+                        queue!(stdout, SetColors(Colors::new(Reset, Reset)), Print("."))?;
                     }
                 }
             }
