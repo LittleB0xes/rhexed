@@ -8,11 +8,11 @@ use crossterm::{
     event::{read, Event, KeyCode},
     queue,
     style::{
-        Color::{Red, Reset, White, DarkYellow, Green, DarkGrey},
+        Color::{DarkGrey, DarkYellow, Green, Red, Reset, White},
         Colors, Print, PrintStyledContent, Stylize,
     },
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
-        ExecutableCommand, QueueableCommand,
+    ExecutableCommand, QueueableCommand,
 };
 
 use std::fs::File;
@@ -49,7 +49,14 @@ fn main() -> io::Result<()> {
     let _ = enable_raw_mode();
     while !exit {
         if refresh {
-            render_screen(&mut stdout, &buffer, cursor_start, cursor_index, insert_mode, selection_mode)?;
+            render_screen(
+                &mut stdout,
+                &buffer,
+                cursor_start,
+                cursor_index,
+                insert_mode,
+                selection_mode,
+            )?;
             refresh = false;
         }
         let event = read()?;
@@ -58,9 +65,14 @@ fn main() -> io::Result<()> {
                 Event::Key(e) => {
                     if let KeyCode::Char(k) = e.code {
                         if k as u8 >= 48 && k as u8 <= 57 {
-                            let value = k as u8 - 48; 
+                            let value = k as u8 - 48;
 
-                            write_nibble(&mut buffer, cursor_index % 16 + 16 * (cursor_index / 16), value, nibble_index);
+                            write_nibble(
+                                &mut buffer,
+                                cursor_index % 16 + 16 * (cursor_index / 16),
+                                value,
+                                nibble_index,
+                            );
                             nibble_index += 1;
                             if nibble_index > 1 {
                                 nibble_index = 0;
@@ -69,10 +81,14 @@ fn main() -> io::Result<()> {
                                 }
                             }
                             refresh = true;
-                        }
-                        else if k as u8 >= 97 && k as u8 <= 102 {
-                            let value = k as u8 - 87; 
-                            write_nibble(&mut buffer, cursor_index % 16 + 16 * (cursor_index / 16), value, nibble_index);
+                        } else if k as u8 >= 97 && k as u8 <= 102 {
+                            let value = k as u8 - 87;
+                            write_nibble(
+                                &mut buffer,
+                                cursor_index % 16 + 16 * (cursor_index / 16),
+                                value,
+                                nibble_index,
+                            );
                             nibble_index += 1;
                             if nibble_index > 1 {
                                 nibble_index = 0;
@@ -81,14 +97,11 @@ fn main() -> io::Result<()> {
                                 }
                             }
                             refresh = true;
-
                         }
                     }
                 }
                 _ => {}
-                
             }
-            
         }
         match event {
             Event::Key(e) => match e.code {
@@ -100,7 +113,7 @@ fn main() -> io::Result<()> {
                         refresh = true;
                     }
                 }
-                KeyCode::Char('j') | KeyCode::Down=> { 
+                KeyCode::Char('j') | KeyCode::Down => {
                     if cursor_index < buffer.len() - 16 {
                         cursor_index += 16;
                         nibble_index = 0;
@@ -163,13 +176,12 @@ fn main() -> io::Result<()> {
                 KeyCode::Char('y') => {
                     clipboard.clear();
                     if selection_mode {
-                        let clipboard_range = cursor_index  - cursor_start + 1;
+                        let clipboard_range = cursor_index - cursor_start + 1;
                         for n in 0..clipboard_range {
                             clipboard.push(buffer[cursor_index - (clipboard_range - 1 - n)]);
                         }
                         selection_mode = false;
                         refresh = true;
-                    
                     } else {
                         clipboard.push(buffer[cursor_index]);
                     }
@@ -190,7 +202,6 @@ fn main() -> io::Result<()> {
                 KeyCode::Char('w') => {
                     f = File::create(&args[1]).unwrap();
                     f.write(&buffer).expect("impossible to write file");
-
                 }
                 KeyCode::Esc => {
                     nibble_index = 0;
@@ -202,7 +213,6 @@ fn main() -> io::Result<()> {
             },
             _ => {}
         }
-
     }
 
     stdout
@@ -210,7 +220,6 @@ fn main() -> io::Result<()> {
         .execute(cursor::Show)?
         .execute(cursor::MoveTo(0, 0))?;
     let _ = disable_raw_mode();
-
 
     Ok(())
 }
@@ -223,10 +232,17 @@ fn write_nibble(buffer: &mut Vec<u8>, position: usize, value: u8, nibble_hl: u8)
 }
 
 fn is_printable_code(c: u8) -> bool {
-    c >=32 && c <= 126
+    c >= 32 && c <= 126
 }
 
-fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cursor_index: usize, edit_mode: bool, selection_mode: bool) -> io::Result<()> {
+fn render_screen(
+    stdout: &mut Stdout,
+    buffer: &Vec<u8>,
+    cursor_start: usize,
+    cursor_index: usize,
+    edit_mode: bool,
+    selection_mode: bool,
+) -> io::Result<()> {
     stdout.execute(Clear(ClearType::All))?;
     // queue!(stdout, Clear(ClearType::UntilNewLine))?;
 
@@ -259,16 +275,12 @@ fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cur
 
         if i == cursor_index && !edit_mode && !selection_mode {
             queue!(stdout, SetColors(Colors::new(DarkGrey, Red)))?;
-        } else if i == cursor_index && edit_mode && !selection_mode{
+        } else if i == cursor_index && edit_mode && !selection_mode {
             queue!(stdout, SetColors(Colors::new(DarkGrey, DarkYellow)))?;
         } else if !edit_mode && !selection_mode && is_printable_code(buffer[i]) {
-
             queue!(stdout, SetColors(Colors::new(DarkYellow, Reset)))?;
-
-
         } else if selection_mode && i >= cursor_start && i <= cursor_index {
             queue!(stdout, SetColors(Colors::new(White, Green)))?;
-
         } else {
             queue!(stdout, SetColors(Colors::new(Reset, Reset)))?;
         }
@@ -276,19 +288,43 @@ fn render_screen(stdout: &mut Stdout, buffer: &Vec<u8>, cursor_start: usize, cur
         queue!(stdout, SetColors(Colors::new(Reset, Reset)), Print(" "))?;
 
         if i % 16 == 15 || i == buffer.len() - 1 {
-        // if i % 16 == 15 {
-            queue!(stdout, cursor::MoveTo(60, line + 1 + char_line as u16), PrintStyledContent("  |  ".green()))?;
+            // if i % 16 == 15 {
+            queue!(
+                stdout,
+                cursor::MoveTo(60, line + 1 + char_line as u16),
+                PrintStyledContent("  |  ".green())
+            )?;
             for c in 0..16 {
                 if char_line * 16 + c < buffer.len() {
-                    if is_printable_code(buffer[char_line * 16 + c]) {
+                    let displayed_char = if is_printable_code(buffer[char_line * 16 + c]) {
+                        buffer[char_line * 16 + c] as char
+                    } else {
+                        '.'
+                    };
+
+                    if char_line * 16 + c == cursor_index {
+                        queue!(
+                            stdout,
+                            SetColors(Colors::new(DarkGrey, Red)),
+                            Print(format!("{}", displayed_char))
+                        )?;
+                    } else if is_printable_code(buffer[char_line * 16 + c]) {
                         queue!(
                             stdout,
                             SetColors(Colors::new(DarkYellow, Reset)),
-                            Print(format!("{}", buffer[char_line * 16 + c] as char))
+                            Print(format!("{}", displayed_char))
                         )?;
                     } else {
-                        queue!(stdout, SetColors(Colors::new(Reset, Reset)), Print("."))?;
+                        queue!(
+                            stdout,
+                            SetColors(Colors::new(Reset, Reset)),
+                            Print(format!("{}", displayed_char))
+                        )?;
                     }
+
+
+                    // Reset Colors
+                    queue!(stdout, SetColors(Colors::new(Reset, Reset)),)?;
                 }
             }
         }
