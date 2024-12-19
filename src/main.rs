@@ -1,14 +1,13 @@
 use std::env;
 use std::io::{self, Stdout, Write};
 
-use crossterm::cursor::MoveToNextLine;
 use crossterm::style::SetColors;
 use crossterm::{
     cursor,
     event::{read, Event, KeyCode},
     queue,
     style::{
-        Color::{DarkGrey, DarkYellow, Green, Red, Reset, White},
+        Color::{DarkGrey, DarkYellow, Green, Red, Reset, White, DarkGreen},
         Colors, Print, PrintStyledContent, Stylize,
     },
     terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType},
@@ -44,8 +43,8 @@ fn main() -> io::Result<()> {
     let mut buffer = vec![];
     f.read_to_end(&mut buffer).unwrap();
 
-    stdout.execute(Clear(ClearType::All))?;
-    stdout.execute(cursor::Hide)?;
+    // stdout.execute(Clear(ClearType::All))?;
+    // stdout.execute(cursor::Hide)?;
     let _ = enable_raw_mode();
     while !exit {
         if refresh {
@@ -213,6 +212,9 @@ fn main() -> io::Result<()> {
             },
             _ => {}
         }
+        if cursor_index >= buffer.len() {
+            cursor_index = buffer.len() - 1;
+        }
     }
 
     stdout
@@ -243,7 +245,9 @@ fn render_screen(
     edit_mode: bool,
     selection_mode: bool,
 ) -> io::Result<()> {
-    stdout.execute(Clear(ClearType::All))?;
+    stdout.queue(Clear(ClearType::All))?
+    .queue(cursor::MoveTo(0,0))?;
+
     // queue!(stdout, Clear(ClearType::UntilNewLine))?;
 
     let mut line: u16 = 0;
@@ -252,48 +256,52 @@ fn render_screen(
             stdout,
             cursor::MoveTo(0, line),
             PrintStyledContent(line_text.magenta()),
-            cursor::MoveToNextLine(1)
         )?;
         line += 1;
     }
-    queue!(stdout, cursor::MoveToNextLine(1))?;
-    let mut char_index = 0;
+    queue!(
+        stdout,
+        cursor::MoveToNextLine(1),
+        cursor::MoveToNextLine(1),
+        cursor::MoveToNextLine(1)
+        )?;
+
 
     let mut char_line = 0;
-    stdout.queue(PrintStyledContent("00000000 : ".green()));
     for (i, byte) in buffer.iter().enumerate() {
-        if i % 16 == 0 && i != 0 {
-            // Jump to the next line
+
+        if i == 0 {
+            stdout.queue(PrintStyledContent("00000000 : ".green()))?;
+        }
+        else if i % 16 == 0 && i != 0 {
+        //     // Jump to the next line
             char_line += 1;
-            char_index = 0;
-            queue!(
-                stdout,
-                cursor::MoveToNextLine(1),
-                PrintStyledContent(format!("{:08x} : ", i).green())
-            )?;
+            stdout.queue(PrintStyledContent(format!("{:08x} : ", i).green()))?;
         }
 
         if i == cursor_index && !edit_mode && !selection_mode {
-            queue!(stdout, SetColors(Colors::new(DarkGrey, Red)))?;
+            stdout.queue(SetColors(Colors::new(DarkGrey, Red)))?;
         } else if i == cursor_index && edit_mode && !selection_mode {
-            queue!(stdout, SetColors(Colors::new(DarkGrey, DarkYellow)))?;
+            stdout.queue(SetColors(Colors::new(DarkGrey, DarkYellow)))?;
         } else if !edit_mode && !selection_mode && is_printable_code(buffer[i]) {
-            queue!(stdout, SetColors(Colors::new(DarkYellow, Reset)))?;
+            stdout.queue(SetColors(Colors::new(DarkYellow, Reset)))?;
         } else if selection_mode && i >= cursor_start && i <= cursor_index {
-            queue!(stdout, SetColors(Colors::new(White, Green)))?;
+            stdout.queue(SetColors(Colors::new(White, Green)))?;
+        } else if edit_mode && is_printable_code(buffer[i]) {
+            stdout.queue(SetColors(Colors::new(DarkGreen, Reset)))?;
         } else {
-            queue!(stdout, SetColors(Colors::new(Reset, Reset)))?;
+            stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
         }
-        queue!(stdout, Print(format!("{:02x}", byte)))?;
-        queue!(stdout, SetColors(Colors::new(Reset, Reset)), Print(" "))?;
+        stdout.queue(Print(format!("{:02x}", byte)))?
+        .queue(SetColors(Colors::new(Reset, Reset)))?
+        .queue(Print(" "))?;
 
+
+        // Ascii  Side bar
         if i % 16 == 15 || i == buffer.len() - 1 {
-            // if i % 16 == 15 {
-            queue!(
-                stdout,
-                cursor::MoveTo(60, line + 1 + char_line as u16),
-                PrintStyledContent("  |  ".green())
-            )?;
+            stdout.queue(cursor::MoveToColumn(60))?
+                .queue(PrintStyledContent("|  ".green()))?;
+            
             for c in 0..16 {
                 if char_line * 16 + c < buffer.len() {
                     let displayed_char = if is_printable_code(buffer[char_line * 16 + c]) {
@@ -303,33 +311,21 @@ fn render_screen(
                     };
 
                     if char_line * 16 + c == cursor_index {
-                        queue!(
-                            stdout,
-                            SetColors(Colors::new(DarkGrey, Red)),
-                            Print(format!("{}", displayed_char))
-                        )?;
+                        stdout.queue(SetColors(Colors::new(DarkGrey, Red)))?
+                            .queue(Print(format!("{}", displayed_char)))?;
                     } else if is_printable_code(buffer[char_line * 16 + c]) {
-                        queue!(
-                            stdout,
-                            SetColors(Colors::new(DarkYellow, Reset)),
-                            Print(format!("{}", displayed_char))
-                        )?;
+                        stdout.queue(SetColors(Colors::new(DarkYellow, Reset)))?
+                            .queue(Print(format!("{}", displayed_char)))?;
                     } else {
-                        queue!(
-                            stdout,
-                            SetColors(Colors::new(Reset, Reset)),
-                            Print(format!("{}", displayed_char))
-                        )?;
+                        stdout.queue(SetColors(Colors::new(Reset, Reset)))?
+                            .queue(Print(format!("{}", displayed_char)))?;
                     }
-
-
                     // Reset Colors
-                    queue!(stdout, SetColors(Colors::new(Reset, Reset)),)?;
+                    stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
                 }
             }
+            stdout.queue(cursor::MoveToNextLine(1))?;
         }
-
-        char_index += 1;
     }
     stdout.flush()?;
     Ok(())
