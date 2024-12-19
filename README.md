@@ -20,6 +20,7 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 
 
 ## Command
+```
 - hjkl or arrow     move 
 - g                 move to the beginning of the file
 - G                 move to the end of the file
@@ -34,3 +35,5 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 - <ESC>             quit insert mode
 - w                 write file
 - q                 quit
+```
+
