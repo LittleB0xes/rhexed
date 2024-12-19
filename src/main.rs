@@ -261,21 +261,20 @@ fn render_screen(
     }
     queue!(
         stdout,
-        cursor::MoveToNextLine(1),
-        cursor::MoveToNextLine(1),
+        cursor::MoveToNextLine(3),
+        PrintStyledContent("Size : ".green()),
+        PrintStyledContent(format!("{} bytes", buffer.len()).magenta()),
         cursor::MoveToNextLine(1)
+
         )?;
 
 
-    let mut char_line = 0;
-    for (i, byte) in buffer.iter().enumerate() {
-
+    // let mut char_line = 0;
+    for i in 0..buffer.len() {
         if i == 0 {
             stdout.queue(PrintStyledContent("00000000 : ".green()))?;
         }
         else if i % 16 == 0 && i != 0 {
-        //     // Jump to the next line
-            char_line += 1;
             stdout.queue(PrintStyledContent(format!("{:08x} : ", i).green()))?;
         }
 
@@ -292,7 +291,7 @@ fn render_screen(
         } else {
             stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
         }
-        stdout.queue(Print(format!("{:02x}", byte)))?
+        stdout.queue(Print(format!("{:02x}", buffer[i])))?
         .queue(SetColors(Colors::new(Reset, Reset)))?
         .queue(Print(" "))?;
 
@@ -302,18 +301,19 @@ fn render_screen(
             stdout.queue(cursor::MoveToColumn(60))?
                 .queue(PrintStyledContent("|  ".green()))?;
             
+            let line_index = i / 16;
             for c in 0..16 {
-                if char_line * 16 + c < buffer.len() {
-                    let displayed_char = if is_printable_code(buffer[char_line * 16 + c]) {
-                        buffer[char_line * 16 + c] as char
+                if line_index * 16 + c < buffer.len() {
+                    let displayed_char = if is_printable_code(buffer[line_index * 16 + c]) {
+                        buffer[line_index * 16 + c] as char
                     } else {
                         '.'
                     };
 
-                    if char_line * 16 + c == cursor_index {
+                    if line_index * 16 + c == cursor_index {
                         stdout.queue(SetColors(Colors::new(DarkGrey, Red)))?
                             .queue(Print(format!("{}", displayed_char)))?;
-                    } else if is_printable_code(buffer[char_line * 16 + c]) {
+                    } else if is_printable_code(buffer[line_index * 16 + c]) {
                         stdout.queue(SetColors(Colors::new(DarkYellow, Reset)))?
                             .queue(Print(format!("{}", displayed_char)))?;
                     } else {

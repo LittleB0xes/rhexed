@@ -1,18 +1,33 @@
-# rHexeD
-a WIP hex file editor
+```
+d8888b. db   db d88888b db    db d88888b d8888b.
+88  `8D 88   88 88'     `8b  d8' 88'     88  `8D
+88oobY' 88ooo88 88ooooo  `8bd8'  88ooooo 88   88
+88`8b   88~~~88 88~~~~~  .dPYb.  88~~~~~ 88   88
+88 `88. 88   88 88.     .8P  Y8. 88.     88  .8D
+88   YD YP   YP Y88888P YP    YP Y88888P Y8888D'
+```
+
+
+# rHexeD - a WIP hex file editor
+
+## Usage
+```
+./rhexed my_file
+```
+
 
 ## Command
-- move: hjkl or arrow
-- move to the beginning of the file: g
-- move to the end of the file: G
-- move to the beginning of the line: 0
-- move to the end of the line: $
-- insert a byte after cursor position: a
-- cut a byte: x
-- copy a byte or a range of selected bytes: y
-- paste a byte or a range of selected bytes: p
-- select multiple byte: v
-- insert mode: i
-- quit insert mode: <ESC>
-- write file: w
-- quit: q
+- hjkl or arrow     move 
+- g                 move to the beginning of the file
+- G                 move to the end of the file
+- 0                 move to the beginning of the line
+- $                 move to the end of the line
+- a                 insert a byte after cursor position
+- x                 cut a byte
+- y                 copy a byte or a range of selected bytes
+- p                 paste a byte or a range of selected bytes
+- v                 select multiple byte
+- i                 insert mode
+- <ESC>             quit insert mode
+- w                 write file
+- q                 quit
