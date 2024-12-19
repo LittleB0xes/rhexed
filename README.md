@@ -15,6 +15,9 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 ./rhexed my_file
 ```
 
+## Disclaimer
+:warning: Currently, the size of open files is limited by the size of the console. Multi-page management will come soon...
+
 
 ## Command
 - hjkl or arrow     move 
