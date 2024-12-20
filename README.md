@@ -27,6 +27,8 @@ At the same time, I have the same project but in [C](https://github.com/LittleB0
 - G                 move to the end of the file
 - (                 move to the beginning of the line
 - )                 move to the end of the line
+- [                 move to the beginning of the page
+- ]                 move to the end of the page
 - a                 insert a byte after cursor position
 - x                 cut a byte
 - y                 copy a byte or a range of selected bytes

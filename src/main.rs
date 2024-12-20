@@ -1,4 +1,5 @@
 use std::env;
+use std::cmp;
 use std::io::{self, Stdout, Write};
 
 use crossterm::style::SetColors;
@@ -26,6 +27,8 @@ const RHEXED: [&str; 6] = [
     "88   YD YP   YP Y88888P YP    YP Y88888P Y8888D'",
 ];
 
+const PAGE_SIZE: usize = 0x100;
+
 fn main() -> io::Result<()> {
     let mut refresh: bool = true;
     let mut exit: bool = false;
@@ -34,6 +37,7 @@ fn main() -> io::Result<()> {
     let mut cursor_index = 0;
     let mut nibble_index = 0;
     let mut cursor_start = 0;
+    let mut page = 0;
     let mut clipboard: Vec<u8> = Vec::new();
     let mut stdout = io::stdout();
 
@@ -47,10 +51,21 @@ fn main() -> io::Result<()> {
     // stdout.execute(cursor::Hide)?;
     let _ = enable_raw_mode();
     while !exit {
+        cursor_index = cmp::max(0, cursor_index);
+        cursor_index = cmp::min(cursor_index, buffer.len() - 1);
+
+        if cursor_index >= (page + 1) * PAGE_SIZE || cursor_index < page * PAGE_SIZE {
+            page = cursor_index / PAGE_SIZE;
+            refresh = true;
+        }
+
+
+
         if refresh {
             render_screen(
                 &mut stdout,
                 &buffer,
+                page,
                 cursor_start,
                 cursor_index,
                 insert_mode,
@@ -144,6 +159,20 @@ fn main() -> io::Result<()> {
                     cursor_index = line * 16 + 15;
                     nibble_index = 0;
                     refresh = true;
+                }
+                KeyCode::Char('b') => {
+                    if page > 0 {
+                        page -= 1;
+                        cursor_index -= PAGE_SIZE;
+                        refresh = true;
+                    }
+                }
+                KeyCode::Char('n') => {
+                    if page < buffer.len() / PAGE_SIZE {
+                        page += 1;
+                        cursor_index += PAGE_SIZE;
+                        refresh = true;
+                    }
                 }
                 KeyCode::Char('g') => {
                     cursor_index = 0;
@@ -240,6 +269,7 @@ fn is_printable_code(c: u8) -> bool {
 fn render_screen(
     stdout: &mut Stdout,
     buffer: &Vec<u8>,
+    page: usize,
     cursor_start: usize,
     cursor_index: usize,
     edit_mode: bool,
@@ -268,9 +298,8 @@ fn render_screen(
 
         )?;
 
-
-    // let mut char_line = 0;
-    for i in 0..buffer.len() {
+    let limit: usize = cmp::min(buffer.len(), (page + 1) * PAGE_SIZE);
+    for i in (page * PAGE_SIZE)..limit {
         if i == 0 {
             stdout.queue(PrintStyledContent("00000000 : ".green()))?;
         }
