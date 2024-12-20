@@ -43,7 +43,6 @@ fn main() -> io::Result<()> {
     let mut clipboard: Vec<u8> = Vec::new();
 
     let mut jump_mode: bool = false;
-    let mut jump_entry: Vec<u8> = Vec::new();
     let mut jump_value = 0;
     
     let mut stdout = io::stdout();
@@ -138,14 +137,12 @@ fn main() -> io::Result<()> {
                     KeyCode::Char('q') => exit = true,
                     KeyCode::Enter => {
                         cursor_index = jump_value as usize;
-                        jump_entry.clear();
                         jump_value = 0;
                         jump_mode = false;
                         refresh = true;
                     }
                     KeyCode::Backspace => {
-                        jump_entry.pop();
-                        jump_value = entry_to_adress(&jump_entry);
+                        jump_value >>= 4;
                         refresh = true;
                     }
                     _ => {}
@@ -160,17 +157,17 @@ fn main() -> io::Result<()> {
                     if let KeyCode::Char(k) = e.code {
 
                         // For digit 0 to 9 
-                        if jump_entry.len() < 8 && k as u8 >= 48 && k as u8 <= 57 {
-                            let value = k as u8 - 48;
-                            jump_entry.push(value);
-                            jump_value = entry_to_adress(&jump_entry);
+                        if k as u32 >= 48 && k as u32 <= 57 {
+                            let value = k as u32 - 48;
+                            jump_value <<= 4;
+                            jump_value += value;
                             
                         }
                         // For digit a to f
-                        else if jump_entry.len() < 8 && k as u8 >= 97 && k as u8 <= 102 {
-                            let value = k as u8 - 87;
-                            jump_entry.push(value);
-                            jump_value = entry_to_adress(&jump_entry);
+                        else if k as u32 >= 97 && k as u32 <= 102 {
+                            let value = k as u32 - 87;
+                            jump_value <<= 4;
+                            jump_value += value;
                         }
                         refresh = true;
                     }
@@ -332,18 +329,6 @@ fn write_nibble(buffer: &mut Vec<u8>, position: usize, value: u8, nibble_hl: u8)
 
 fn is_printable_code(c: u8) -> bool {
     c >= 32 && c <= 126
-}
-
-// Convert a Vec of digit (reverse ordered) into an adress
-fn entry_to_adress(entry: &Vec<u8>) -> usize {
-    let mut address = 0;
-    let p = entry.len();
-    for i in 0..entry.len() {
-        address += entry[i] as u32 * 16u32.pow((p - i - 1).try_into().unwrap());
-    }
-    
-    return address as usize
-
 }
 
 fn render_screen(
