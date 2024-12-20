@@ -291,9 +291,23 @@ fn render_screen(
     }
     queue!(
         stdout,
-        cursor::MoveToNextLine(3),
+        cursor::MoveToNextLine(2))?;
+    if edit_mode {
+        queue!(
+            stdout,
+            cursor::MoveToColumn(30),
+            PrintStyledContent("-- EDIT --".magenta()),
+            )?;
+    }
+    queue!(
+        stdout,
+        cursor::MoveToNextLine(1),
         PrintStyledContent("Size : ".green()),
         PrintStyledContent(format!("{} bytes", buffer.len()).magenta()),
+        PrintStyledContent("  -  Page : ".green()),
+        PrintStyledContent(format!("{} / {}", page, buffer.len() / PAGE_SIZE).magenta()),
+        PrintStyledContent("  -  Adress : ".green()),
+        PrintStyledContent(format!("{:08x}", cursor_index).magenta()),
         cursor::MoveToNextLine(1)
 
         )?;
