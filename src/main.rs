@@ -1,6 +1,8 @@
 use std::env;
 use std::cmp;
+use std::fmt::format;
 use std::io::{self, Stdout, Write};
+use std::usize;
 
 use crossterm::style::SetColors;
 use crossterm::{
@@ -39,6 +41,11 @@ fn main() -> io::Result<()> {
     let mut cursor_start = 0;
     let mut page = 0;
     let mut clipboard: Vec<u8> = Vec::new();
+
+    let mut jump_mode: bool = false;
+    let mut jump_entry: Vec<u8> = Vec::new();
+    let mut jump_value = 0;
+    
     let mut stdout = io::stdout();
 
     let args: Vec<String> = env::args().collect();
@@ -70,6 +77,8 @@ fn main() -> io::Result<()> {
                 cursor_index,
                 insert_mode,
                 selection_mode,
+                jump_mode,
+                jump_value as usize
             )?;
             refresh = false;
         }
@@ -117,129 +126,188 @@ fn main() -> io::Result<()> {
                 _ => {}
             }
         }
-        match event {
-            Event::Key(e) => match e.code {
-                KeyCode::Char('q') => exit = true,
-                KeyCode::Char('h') | KeyCode::Left => {
-                    if cursor_index > 0 {
-                        nibble_index = 0;
-                        cursor_index -= 1;
+        if jump_mode {
+
+            // Process commands
+            match event {
+                Event::Key(e) => match e.code {
+                    KeyCode::Esc => {
+                        jump_mode = false;
                         refresh = true;
                     }
-                }
-                KeyCode::Char('j') | KeyCode::Down => {
-                    if cursor_index < buffer.len() - 16 {
-                        cursor_index += 16;
-                        nibble_index = 0;
+                    KeyCode::Char('q') => exit = true,
+                    KeyCode::Enter => {
+                        cursor_index = jump_value as usize;
+                        jump_entry.clear();
+                        jump_value = 0;
+                        jump_mode = false;
                         refresh = true;
                     }
-                }
-                KeyCode::Char('k') | KeyCode::Up => {
-                    if cursor_index >= 16 {
-                        nibble_index = 0;
-                        cursor_index -= 16;
+                    KeyCode::Backspace => {
+                        jump_entry.pop();
+                        jump_value = entry_to_adress(&jump_entry);
                         refresh = true;
                     }
-                }
-                KeyCode::Char('l') | KeyCode::Right => {
-                    if cursor_index < buffer.len() - 1 {
-                        nibble_index = 0;
-                        cursor_index += 1;
-                        refresh = true;
-                    }
-                }
-                KeyCode::Char('(') => {
-                    let line = cursor_index / 16;
-                    cursor_index = line * 16;
-                    nibble_index = 0;
-                    refresh = true;
-                }
-                KeyCode::Char(')') => {
-                    let line = cursor_index / 16;
-                    cursor_index = line * 16 + 15;
-                    nibble_index = 0;
-                    refresh = true;
-                }
-                KeyCode::Char('b') => {
-                    if page > 0 {
-                        page -= 1;
-                        cursor_index -= PAGE_SIZE;
-                        refresh = true;
-                    }
-                }
-                KeyCode::Char('n') => {
-                    if page < buffer.len() / PAGE_SIZE {
-                        page += 1;
-                        cursor_index += PAGE_SIZE;
-                        refresh = true;
-                    }
-                }
-                KeyCode::Char('g') => {
-                    cursor_index = 0;
-                    refresh = true;
-                    nibble_index = 0;
-                }
-                KeyCode::Char('G') => {
-                    cursor_index = buffer.len() - 1;
-                    nibble_index = 0;
-                    refresh = true;
-                }
-                KeyCode::Char('i') => {
-                    insert_mode = true;
-                    selection_mode = false;
-                    refresh = true;
-                }
-                KeyCode::Char('a') => {
-                    buffer.insert(cursor_index + 1, 0);
-                    refresh = true;
-                }
-                KeyCode::Char('x') => {
-                    if buffer.len() > 0 {
-                        clipboard.clear();
-                        clipboard.push(buffer[cursor_index]);
-                        buffer.remove(cursor_index);
-                        refresh = true;
-                    }
-                }
-                KeyCode::Char('y') => {
-                    clipboard.clear();
-                    if selection_mode {
-                        let clipboard_range = cursor_index - cursor_start + 1;
-                        for n in 0..clipboard_range {
-                            clipboard.push(buffer[cursor_index - (clipboard_range - 1 - n)]);
-                        }
-                        selection_mode = false;
-                        refresh = true;
-                    } else {
-                        clipboard.push(buffer[cursor_index]);
-                    }
-                }
-                KeyCode::Char('p') => {
-                    for n in 0..clipboard.len() {
-                        if cursor_index + n < buffer.len() {
-                            buffer[cursor_index + n] = clipboard[n];
-                        }
-                    }
-                    refresh = true;
-                }
-                KeyCode::Char('v') => {
-                    cursor_start = cursor_index;
-                    selection_mode = true;
-                    refresh = true;
-                }
-                KeyCode::Char('w') => {
-                    f = File::create(&args[1]).unwrap();
-                    f.write(&buffer).expect("impossible to write file");
-                }
-                KeyCode::Esc => {
-                    nibble_index = 0;
-                    insert_mode = false;
-                    selection_mode = false;
-                    refresh = true;
+                    _ => {}
                 }
                 _ => {}
-            },
-            _ => {}
+            }
+
+
+            // Process the adress input 
+            match event {
+                Event::Key(e) => {
+                    if let KeyCode::Char(k) = e.code {
+
+                        // For digit 0 to 9 
+                        if k as u8 >= 48 && k as u8 <= 57 {
+                            let value = k as u8 - 48;
+                            jump_entry.push(value);
+                            jump_value = entry_to_adress(&jump_entry);
+                            
+                        }
+                        // For digit a to f
+                        else if k as u8 >= 97 && k as u8 <= 102 {
+                            let value = k as u8 - 87;
+                            jump_entry.push(value);
+                            jump_value = entry_to_adress(&jump_entry);
+                        }
+                        refresh = true;
+                    }
+                }
+                _ => {}
+            }
+
+        }
+        else {
+            match event {
+                Event::Key(e) => match e.code {
+                    KeyCode::Char('q') => exit = true,
+                    KeyCode::Char('h') | KeyCode::Left => {
+                        if cursor_index > 0 {
+                            nibble_index = 0;
+                            cursor_index -= 1;
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        if cursor_index < buffer.len() - 16 {
+                            cursor_index += 16;
+                            nibble_index = 0;
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if cursor_index >= 16 {
+                            nibble_index = 0;
+                            cursor_index -= 16;
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('l') | KeyCode::Right => {
+                        if cursor_index < buffer.len() - 1 {
+                            nibble_index = 0;
+                            cursor_index += 1;
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('(') => {
+                        let line = cursor_index / 16;
+                        cursor_index = line * 16;
+                        nibble_index = 0;
+                        refresh = true;
+                    }
+                    KeyCode::Char(')') => {
+                        let line = cursor_index / 16;
+                        cursor_index = line * 16 + 15;
+                        nibble_index = 0;
+                        refresh = true;
+                    }
+                    KeyCode::Char('b') => {
+                        if page > 0 {
+                            page -= 1;
+                            cursor_index -= PAGE_SIZE;
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('n') => {
+                        if page < buffer.len() / PAGE_SIZE {
+                            page += 1;
+                            cursor_index += PAGE_SIZE;
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('g') => {
+                        cursor_index = 0;
+                        refresh = true;
+                        nibble_index = 0;
+                    }
+                    KeyCode::Char('G') => {
+                        cursor_index = buffer.len() - 1;
+                        nibble_index = 0;
+                        refresh = true;
+                    }
+                    KeyCode::Char('i') => {
+                        insert_mode = true;
+                        selection_mode = false;
+                        refresh = true;
+                    }
+                    KeyCode::Char('a') => {
+                        buffer.insert(cursor_index + 1, 0);
+                        refresh = true;
+                    }
+                    KeyCode::Char('x') => {
+                        if buffer.len() > 0 {
+                            clipboard.clear();
+                            clipboard.push(buffer[cursor_index]);
+                            buffer.remove(cursor_index);
+                            refresh = true;
+                        }
+                    }
+                    KeyCode::Char('y') => {
+                        clipboard.clear();
+                        if selection_mode {
+                            let clipboard_range = cursor_index - cursor_start + 1;
+                            for n in 0..clipboard_range {
+                                clipboard.push(buffer[cursor_index - (clipboard_range - 1 - n)]);
+                            }
+                            selection_mode = false;
+                            refresh = true;
+                        } else {
+                            clipboard.push(buffer[cursor_index]);
+                        }
+                    }
+                    KeyCode::Char('p') => {
+                        for n in 0..clipboard.len() {
+                            if cursor_index + n < buffer.len() {
+                                buffer[cursor_index + n] = clipboard[n];
+                            }
+                        }
+                        refresh = true;
+                    }
+                    KeyCode::Char('v') => {
+                        cursor_start = cursor_index;
+                        selection_mode = true;
+                        refresh = true;
+                    }
+                    KeyCode::Char('w') => {
+                        f = File::create(&args[1]).unwrap();
+                        f.write(&buffer).expect("impossible to write file");
+                    }
+                    KeyCode::Char('J') => {
+                        jump_mode = true;
+                        refresh = true;
+                    }
+                    KeyCode::Esc => {
+                        nibble_index = 0;
+                        insert_mode = false;
+                        selection_mode = false;
+                        refresh = true;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
         }
         if cursor_index >= buffer.len() {
             cursor_index = buffer.len() - 1;
@@ -266,6 +334,18 @@ fn is_printable_code(c: u8) -> bool {
     c >= 32 && c <= 126
 }
 
+// Convert a Vec of digit (reverse ordered) into an adress
+fn entry_to_adress(entry: &Vec<u8>) -> usize {
+    let mut address = 0;
+    let p = entry.len();
+    for i in 0..entry.len() {
+        address += entry[i] as u32 * 16u32.pow((p - i - 1).try_into().unwrap());
+    }
+    
+    return address as usize
+
+}
+
 fn render_screen(
     stdout: &mut Stdout,
     buffer: &Vec<u8>,
@@ -274,6 +354,8 @@ fn render_screen(
     cursor_index: usize,
     edit_mode: bool,
     selection_mode: bool,
+    jump_mode: bool,
+    jump_value: usize
 ) -> io::Result<()> {
     stdout.queue(Clear(ClearType::All))?
     .queue(cursor::MoveTo(0,0))?;
@@ -306,7 +388,7 @@ fn render_screen(
         PrintStyledContent(format!("{} bytes", buffer.len()).magenta()),
         PrintStyledContent("  -  Page : ".green()),
         PrintStyledContent(format!("{} / {}", page, buffer.len() / PAGE_SIZE).magenta()),
-        PrintStyledContent("  -  Adress : ".green()),
+        PrintStyledContent("  -  Address : ".green()),
         PrintStyledContent(format!("{:08x}", cursor_index).magenta()),
         cursor::MoveToNextLine(1)
 
@@ -369,6 +451,12 @@ fn render_screen(
             }
             stdout.queue(cursor::MoveToNextLine(1))?;
         }
+    }
+    if jump_mode {
+        stdout.queue(cursor::MoveToNextLine(1))?
+            .queue(cursor::MoveToColumn(20))?
+            .queue(PrintStyledContent("Jump to ".magenta()))?
+            .queue(PrintStyledContent(format!("0x{:08x}", jump_value).magenta()))?;
     }
     stdout.flush()?;
     Ok(())

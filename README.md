@@ -9,7 +9,7 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 
 
 # rHexeD - a WIP hex file editor
-At the same time, I have the same project but in [C](https://github.com/LittleB0xes/hexed)
+At the same time, I have the (almost) same project but in [C](https://github.com/LittleB0xes/hexed)
 
 ## Usage
 ```
@@ -27,6 +27,7 @@ At the same time, I have the same project but in [C](https://github.com/LittleB0
 - ]                 move to the end of the page
 - n                 go to the next page
 - b                 go to the previous page
+- J                 go to a specified address
 - a                 insert a byte after cursor position
 - x                 cut a byte
 - y                 copy a byte or a range of selected bytes
