@@ -160,14 +160,14 @@ fn main() -> io::Result<()> {
                     if let KeyCode::Char(k) = e.code {
 
                         // For digit 0 to 9 
-                        if k as u8 >= 48 && k as u8 <= 57 {
+                        if jump_entry.len() < 8 && k as u8 >= 48 && k as u8 <= 57 {
                             let value = k as u8 - 48;
                             jump_entry.push(value);
                             jump_value = entry_to_adress(&jump_entry);
                             
                         }
                         // For digit a to f
-                        else if k as u8 >= 97 && k as u8 <= 102 {
+                        else if jump_entry.len() < 8 && k as u8 >= 97 && k as u8 <= 102 {
                             let value = k as u8 - 87;
                             jump_entry.push(value);
                             jump_value = entry_to_adress(&jump_entry);

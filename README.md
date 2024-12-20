@@ -11,12 +11,18 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 # rHexeD - a WIP hex file editor
 At the same time, I have the (almost) same project but in [C](https://github.com/LittleB0xes/hexed)
 
+rHexeD is a small hex editor using the awesome [Crossterm](https://github.com/crossterm-rs/crossterm) as Terminal Library.
+
+
+
 ## Usage
-```
-./rhexed my_file
-```
+
+> ./rhexed my_file
+
 
 ## Command
+Some commands are available, and others will come later
+
 ```
 - hjkl or arrow     move 
 - g                 move to the beginning of the file
