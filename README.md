@@ -9,6 +9,7 @@ d8888b. db   db d88888b db    db d88888b d8888b.
 
 
 # rHexeD - a WIP hex file editor
+At the same time, I have the same project but in [C](https://github.com/LittleB0xes/hexed)
 
 ## Usage
 ```
