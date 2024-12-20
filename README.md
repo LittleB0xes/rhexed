@@ -16,10 +16,6 @@ At the same time, I have the same project but in [C](https://github.com/LittleB0
 ./rhexed my_file
 ```
 
-## Disclaimer
-:warning: Currently, the size of open files is limited by the size of the console. Multi-page management will come soon...
-
-
 ## Command
 ```
 - hjkl or arrow     move 
@@ -29,6 +25,8 @@ At the same time, I have the same project but in [C](https://github.com/LittleB0
 - )                 move to the end of the line
 - [                 move to the beginning of the page
 - ]                 move to the end of the page
+- n                 go to the next page
+- b                 go to the previous page
 - a                 insert a byte after cursor position
 - x                 cut a byte
 - y                 copy a byte or a range of selected bytes
