@@ -27,6 +27,7 @@ fn main() -> io::Result<()> {
     }
 
     let _ = enable_raw_mode();
+    stdout.execute(terminal::DisableLineWrap)?;
     editors[current_editor].render(&mut stdout, show_title)?;
     while !editors[current_editor].exit {
         let event = read()?;

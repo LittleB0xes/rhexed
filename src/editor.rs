@@ -360,7 +360,7 @@ impl Editor {
 
     pub fn render(&mut self, stdout: &mut Stdout, show_title: bool) -> io::Result<()> {
         self.terminal_height = terminal::size()?.1 as usize;
-        if show_title {
+        if show_title && self.terminal_height > 20 {
             self.page_size = (self.terminal_height - 12) * 16;
         } else {
             self.page_size = (self.terminal_height - 6) * 16;
@@ -422,7 +422,7 @@ impl Editor {
         // queue!(stdout, Clear(ClearType::UntilNewLine))?;
 
         let mut line: u16 = 0;
-        if show_title {
+        if show_title && self.terminal_height > 20 {
             for line_text in RHEXED.iter() {
                 queue!(
                     stdout,
