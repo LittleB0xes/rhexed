@@ -210,6 +210,10 @@ impl Editor {
                             self.mode = Mode::Jump;
                             self.refresh = true;
                         }
+                        KeyCode::Char('r') => {
+                            self.reload();
+                            self.refresh = true;
+                        }
                         KeyCode::Esc => {
                             self.nibble_index = 0;
                             self.mode = Mode::Normal;
@@ -510,6 +514,12 @@ impl Editor {
         }
         stdout.flush()?;
         Ok(())
+    }
+
+    fn reload(&mut self) {
+        let mut f = File::open(&self.file_name).unwrap();
+        self.buffer.clear();
+        f.read_to_end(&mut self.buffer).unwrap();
     }
 
 }
