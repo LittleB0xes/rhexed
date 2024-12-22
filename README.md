@@ -15,6 +15,8 @@ rHexeD is a small hex editor using the awesome [Crossterm](https://github.com/cr
 
 
 
+![rhexed](http://url/to/img.png)
+
 ## Usage
 You can work on one file
 > ./rhexed my_file
