@@ -20,6 +20,7 @@ use crossterm::{
 fn main() -> io::Result<()> {
     let mut stdout = io::stdout();
 
+    let mut show_title = true;
     let args: Vec<String> = env::args().collect();
     let mut editors: Vec<Editor> = Vec::new();
     let mut current_editor = 0;
@@ -28,7 +29,7 @@ fn main() -> io::Result<()> {
     }
 
     let _ = enable_raw_mode();
-    editors[current_editor].render(&mut stdout)?;
+    editors[current_editor].render(&mut stdout, show_title)?;
     while !editors[current_editor].exit {
         let event = read()?;
         match event {
@@ -42,6 +43,10 @@ fn main() -> io::Result<()> {
                 else if e.code == KeyCode::Char('N') {
                     current_editor = cmp::min(current_editor + 1, editors.len() - 1);
                     editors[current_editor].refresh = true;
+                } 
+                else if e.code == KeyCode::Tab {
+                    show_title = !show_title;
+                    editors[current_editor].render(&mut stdout, show_title)?;
 
                 } else {
                     editors[current_editor].update(e);
@@ -52,7 +57,7 @@ fn main() -> io::Result<()> {
             }
         }
         if editors[current_editor].refresh {
-            editors[current_editor].render(&mut stdout)?;
+            editors[current_editor].render(&mut stdout, show_title)?;
         }
     }
 

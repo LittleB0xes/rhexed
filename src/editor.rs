@@ -88,8 +88,6 @@ impl Editor {
     }
 
     pub fn update(&mut self, key_event: KeyEvent) {
-        self.terminal_height = terminal::size().unwrap().1 as usize;
-        self.page_size = (self.terminal_height - 12) * 16;
         match self.mode {
             Mode::Normal =>{
                     match key_event.code {
@@ -365,7 +363,14 @@ impl Editor {
 
     }
 
-    pub fn render(&mut self, stdout: &mut Stdout) -> io::Result<()> {
+    pub fn render(&mut self, stdout: &mut Stdout, show_title: bool) -> io::Result<()> {
+        self.terminal_height = terminal::size().unwrap().1 as usize;
+        if show_title {
+            self.page_size = (self.terminal_height - 12) * 16;
+        } else {
+            self.page_size = (self.terminal_height - 6) * 16;
+
+        }
         self.refresh = false;
         let color_profile: ColorProfile;
         match self.mode {
@@ -419,17 +424,19 @@ impl Editor {
         // queue!(stdout, Clear(ClearType::UntilNewLine))?;
 
         let mut line: u16 = 0;
-        for line_text in RHEXED.iter() {
+        if show_title {
+            for line_text in RHEXED.iter() {
+                queue!(
+                    stdout,
+                    cursor::MoveTo(0, line),
+                    PrintStyledContent(line_text.magenta()),
+                )?;
+                line += 1;
+            }
             queue!(
                 stdout,
-                cursor::MoveTo(0, line),
-                PrintStyledContent(line_text.magenta()),
-            )?;
-            line += 1;
+                cursor::MoveToNextLine(2))?;
         }
-        queue!(
-            stdout,
-            cursor::MoveToNextLine(2))?;
 
         if self.mode == Mode::Edit {
             queue!(
@@ -450,6 +457,8 @@ impl Editor {
             PrintStyledContent(format!("{} / {}", self.page + 1 , self.buffer.len() / self.page_size + 1).magenta()),
             PrintStyledContent("  -  Address : ".green()),
             PrintStyledContent(format!("{:08x}", self.cursor_index).magenta()),
+            PrintStyledContent(" / ".green()),
+            PrintStyledContent(format!("{:08x}", self.buffer.len()).magenta()),
             cursor::MoveToNextLine(1)
 
             )?;

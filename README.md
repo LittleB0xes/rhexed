@@ -45,6 +45,7 @@ Some commands are available, and others will come later
 - p                 paste a byte or a range of selected bytes
 - i                 insert mode
 - <ESC>             quit insert mode
+- <TAB>             show / hide title
 - r                 reload file
 - w                 write file
 - q                 quit
