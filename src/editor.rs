@@ -371,6 +371,10 @@ impl Editor {
             self.page_size = (self.terminal_height - 6) * 16;
 
         }
+        if self.cursor_index >= (self.page + 1) * self.page_size || self.cursor_index < self.page * self.page_size {
+            self.page = self.cursor_index / self.page_size;
+            self.refresh = true;
+        }
         self.refresh = false;
         let color_profile: ColorProfile;
         match self.mode {
