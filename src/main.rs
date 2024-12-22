@@ -27,8 +27,7 @@ fn main() -> io::Result<()> {
     }
 
     let _ = enable_raw_mode();
-    let size = terminal::size()?;
-    editors[current_editor].render(&mut stdout, show_title, size)?;
+    editors[current_editor].render(&mut stdout, show_title)?;
     while !editors[current_editor].exit {
         let event = read()?;
         match event {
@@ -45,18 +44,19 @@ fn main() -> io::Result<()> {
                 } 
                 else if e.code == KeyCode::Tab {
                     show_title = !show_title;
-                    editors[current_editor].render(&mut stdout, show_title, size)?;
+                    editors[current_editor].render(&mut stdout, show_title)?;
 
                 } else {
                     editors[current_editor].update(e);
                 }
             },
+            Event::Resize(_,_ ) => editors[current_editor].render(&mut stdout, show_title)?,
             _ => {
             
             }
         }
         if editors[current_editor].refresh {
-            editors[current_editor].render(&mut stdout, show_title, size)?;
+            editors[current_editor].render(&mut stdout, show_title)?;
         }
     }
 

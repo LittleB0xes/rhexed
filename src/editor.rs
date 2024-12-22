@@ -358,7 +358,7 @@ impl Editor {
 
     }
 
-    pub fn render(&mut self, stdout: &mut Stdout, show_title: bool, size: (u16, u16)) -> io::Result<()> {
+    pub fn render(&mut self, stdout: &mut Stdout, show_title: bool) -> io::Result<()> {
         self.terminal_height = terminal::size()?.1 as usize;
         if show_title {
             self.page_size = (self.terminal_height - 12) * 16;
