@@ -356,11 +356,6 @@ impl Editor {
         self.cursor_index = cmp::max(0, self.cursor_index);
         self.cursor_index = cmp::min(self.cursor_index, self.buffer.len() - 1);
 
-        if self.cursor_index >= (self.page + 1) * self.page_size || self.cursor_index < self.page * self.page_size {
-            self.page = self.cursor_index / self.page_size;
-            self.refresh = true;
-        }
-
     }
 
     pub fn render(&mut self, stdout: &mut Stdout, show_title: bool, size: (u16, u16)) -> io::Result<()> {
@@ -373,7 +368,6 @@ impl Editor {
         }
         if self.cursor_index >= (self.page + 1) * self.page_size || self.cursor_index < self.page * self.page_size {
             self.page = self.cursor_index / self.page_size;
-            self.refresh = true;
         }
         self.refresh = false;
         let color_profile: ColorProfile;
