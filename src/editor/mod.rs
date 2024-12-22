@@ -192,6 +192,8 @@ impl Editor {
                 PrintStyledContent("-- EDIT --".magenta()),
                 )?;
         }
+
+        // Header info data
         queue!(
             stdout,
             cursor::MoveToNextLine(1),
@@ -212,13 +214,15 @@ impl Editor {
 
         let limit: usize = cmp::min(self.buffer.len(), (self.page + 1) * self.page_size);
         for i in (self.page * self.page_size)..limit {
-            if i == 0 {
-                stdout.queue(PrintStyledContent("00000000 : ".green()))?;
-            }
-            else if i % 16 == 0 && i != 0 {
+
+            // Start address display
+            if i % 16 == 0 {
                 stdout.queue(PrintStyledContent(format!("{:08x} : ", i).green()))?;
             }
 
+            // Line of hex data display
+            
+            // First, color setting with context
             if i == self.cursor_index {
                 stdout.queue(SetColors(Colors::new(color_profile.cursor_fg, color_profile.cursor_bg)))?;
             } else if is_printable_code(self.buffer[i]) {
@@ -232,37 +236,50 @@ impl Editor {
             } else {
                 stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
             }
+
+            // Then, hex code display
             stdout.queue(Print(format!("{:02x}", self.buffer[i])))?
                 .queue(SetColors(Colors::new(Reset, Reset)))?
                 .queue(Print(" "))?;
 
 
-            // Ascii  Side bar
+            //  And, at the end of th 16 bytes line,  Char Side bar display
             if i % 16 == 15 || i == self.buffer.len() - 1 {
+
+
+                // Separator
                 stdout.queue(cursor::MoveToColumn(60))?
                     .queue(PrintStyledContent("|  ".green()))?;
                 
-                let line_index = i / 16;
                 for c in 0..16 {
-                    if line_index * 16 + c < self.buffer.len() {
-                        let displayed_char = if is_printable_code(self.buffer[line_index * 16 + c]) {
-                            self.buffer[line_index * 16 + c] as char
+
+                    // Index of char to display
+                    let char_index = (i / 16) * 16 + c;
+
+                    //Set char if printable or '.' dot if not
+                    if char_index < self.buffer.len() {
+                        let displayed_char = if is_printable_code(self.buffer[char_index]) {
+                            self.buffer[char_index] as char
                         } else {
                             '.'
                         };
 
-                        if line_index * 16 + c == self.cursor_index {
-                            stdout.queue(SetColors(Colors::new( Reset, Reset)))?
-                                .queue(Print(format!("{}", displayed_char)))?;
-                        } else if is_printable_code(self.buffer[line_index * 16 + c]) {
+                        // Set Char color
+                        if char_index == self.cursor_index {
+                            stdout.queue(SetColors(Colors::new(
+                                        color_profile.cursor_fg,
+                                        color_profile.cursor_bg)))?;
+                        } else if is_printable_code(self.buffer[char_index]) {
                             stdout.queue(SetColors(Colors::new(
                                         DarkYellow,
-                                        Reset)))?
-                                .queue(Print(format!("{}", displayed_char)))?;
+                                        Reset)))?;
                         } else {
-                            stdout.queue(SetColors(Colors::new(Reset, Reset)))?
-                                .queue(Print(format!("{}", displayed_char)))?;
+                            stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
                         }
+
+                        // Queue the char
+
+                        stdout.queue(Print(format!("{}", displayed_char)))?;
                         // Reset Colors
                         stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
                     }
