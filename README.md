@@ -16,8 +16,11 @@ rHexeD is a small hex editor using the awesome [Crossterm](https://github.com/cr
 
 
 ## Usage
-
+You can work on one file
 > ./rhexed my_file
+
+or, if you need, on several files in the same time, with the ability to navigate from file to file.
+> ./rhexed my_file_1 my_file_2 my_file_3 ...
 
 
 ## Command
@@ -33,12 +36,13 @@ Some commands are available, and others will come later
 - ]                 move to the end of the page
 - n                 go to the next page
 - b                 go to the previous page
+- N                 go to the next file
+- B                 go to the previous file
 - J                 go to a specified address
 - a                 insert a byte after cursor position
 - x                 cut a byte
 - y                 copy a byte or a range of selected bytes
 - p                 paste a byte or a range of selected bytes
-- v                 select multiple byte
 - i                 insert mode
 - <ESC>             quit insert mode
 - w                 write file

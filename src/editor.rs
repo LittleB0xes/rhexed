@@ -1,11 +1,12 @@
 use std::io::{self, Stdout, Write,Read};
 use std::fs::File;
-use std::cmp;
+use std::{cmp, usize};
 
-use crossterm::style::SetColors;
+use crossterm::event::KeyEvent;
+use crossterm::style::{Color, SetColors};
 use crossterm::{
     cursor,
-    event::{Event, KeyCode},
+    event::KeyCode,
     queue,
     style::{
         Color::{DarkGrey, DarkYellow, Green, Red, Reset, White, DarkGreen},
@@ -26,19 +27,27 @@ const RHEXED: [&str; 6] = [
 
 const PAGE_SIZE: usize = 0x100;
 
+#[derive(PartialEq)]
 enum Mode {
     Normal,
-    Insert,
+    Edit,
     Selection,
     Jump
 }
 
+struct ColorProfile {
+    ascii_fg: Color,
+    cursor_fg: Color,
+    cursor_bg: Color,
+    selection_fg: Color,
+    selection_bg: Color
+}
+
 pub struct Editor {
-    refresh: bool,
+    pub id: usize,
+    pub refresh: bool,
     pub exit: bool,
-    edit_mode: bool,
-    jump_mode: bool,
-    selection_mode: bool,
+    mode: Mode,
     cursor_index: usize,
     cursor_start: usize,
     nibble_index:u8,
@@ -51,17 +60,16 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new(file_name: &String) -> Editor {
+    pub fn new(file_name: &String, id: usize) -> Editor {
         let mut f = File::open(file_name).unwrap();
 
         let mut buf: Vec<u8> = Vec::new();
         f.read_to_end(&mut buf).unwrap();
         Editor{
+            id,
             refresh: true,
             exit: false,
-            edit_mode: false,
-            jump_mode: false,
-            selection_mode: false,
+            mode: Mode::Normal,
             cursor_index: 0,
             cursor_start: 0,
             nibble_index: 0,
@@ -73,64 +81,237 @@ impl Editor {
         }
     }
 
-    pub fn update(&mut self, event: Event) {
-        if self.edit_mode {
-            match event {
-                Event::Key(e) => {
-                    if let KeyCode::Char(k) = e.code {
-                        if k as u8 >= 48 && k as u8 <= 57 {
-                            let value = k as u8 - 48;
-
-                            write_nibble(
-                                &mut self.buffer,
-                                self.cursor_index % 16 + 16 * (self.cursor_index / 16),
-                                value,
-                                self.nibble_index,
-                            );
-                            self.nibble_index += 1;
-                            if self.nibble_index > 1 {
+    pub fn update(&mut self, key_event: KeyEvent) {
+        match self.mode {
+            Mode::Normal =>{
+                    match key_event.code {
+                        KeyCode::Char('q') => self.exit = true,
+                        KeyCode::Char('h') | KeyCode::Left => {
+                            if self.cursor_index > 0 {
                                 self.nibble_index = 0;
-                                if self.cursor_index < self.buffer.len() - 1 {
-                                    self.cursor_index += 1;
-                                }
+                                self.cursor_index -= 1;
+                                self.refresh = true;
                             }
-                            self.refresh = true;
-                        } else if k as u8 >= 97 && k as u8 <= 102 {
-                            let value = k as u8 - 87;
-                            write_nibble(
-                                &mut self.buffer,
-                                self.cursor_index % 16 + 16 * (self.cursor_index / 16),
-                                value,
-                                self.nibble_index,
-                            );
-                            self.nibble_index += 1;
-                            if self.nibble_index > 1 {
+                        }
+                        KeyCode::Char('j') | KeyCode::Down => {
+                            if self.cursor_index < self.buffer.len() - 16 {
+                                self.cursor_index += 16;
                                 self.nibble_index = 0;
-                                if self.cursor_index < self.buffer.len() - 1 {
-                                    self.cursor_index += 1;
+                                self.refresh = true;
+                            }
+                        }
+                        KeyCode::Char('k') | KeyCode::Up => {
+                            if self.cursor_index >= 16 {
+                                self.nibble_index = 0;
+                                self.cursor_index -= 16;
+                                self.refresh = true;
+                            }
+                        }
+                        KeyCode::Char('l') | KeyCode::Right => {
+                            if self.cursor_index < self.buffer.len() - 1 {
+                                self.nibble_index = 0;
+                                self.cursor_index += 1;
+                                self.refresh = true;
+                            }
+                        }
+                        KeyCode::Char('(') => {
+                            self.cursor_index = self.cursor_index / 16 * 16;
+                            self.nibble_index = 0;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char(')') => {
+                            self.cursor_index = self.cursor_index / 16 * 16 + 15;
+                            self.nibble_index = 0;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char('[') => {
+                            self.cursor_index = self.page * PAGE_SIZE;
+                            self.nibble_index = 0;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char(']') => {
+                            self.cursor_index = self.page * PAGE_SIZE + 0xff;
+                            self.nibble_index = 0;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char('b') => {
+                            if self.page > 0 {
+
+                                self.page -= 1;
+                                self.cursor_index -= PAGE_SIZE;
+                                self.refresh = true;
+                            }
+                        }
+                        KeyCode::Char('n') => {
+                            if self.page < self.buffer.len() / PAGE_SIZE {
+                                self.page += 1;
+                                self.cursor_index += PAGE_SIZE;
+                                self.refresh = true;
+                            }
+                        }
+                        KeyCode::Char('g') => {
+                            self.cursor_index = 0;
+                            self.refresh = true;
+                            self.nibble_index = 0;
+                        }
+                        KeyCode::Char('G') => {
+                            self.cursor_index = self.buffer.len() - 1;
+                            self.nibble_index = 0;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char('i') => {
+                            self.mode = Mode::Edit;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char('a') => {
+                            self.buffer.insert(self.cursor_index + 1, 0);
+                            self.refresh = true;
+                        }
+                        KeyCode::Char('x') => {
+                            if self.buffer.len() > 0 {
+                                self.clipboard.clear();
+                                self.clipboard.push(self.buffer[self.cursor_index]);
+                                self.buffer.remove(self.cursor_index);
+                                self.refresh = true;
+                            }
+                        }
+                        KeyCode::Char('y') => {
+                            self.clipboard.clear();
+                            if self.mode == Mode::Selection {
+                                let clipboard_range = self.cursor_index - self.cursor_start + 1;
+                                for n in 0..clipboard_range {
+                                    self.clipboard.push(self.buffer[self.cursor_index - (clipboard_range - 1 - n)]);
+                                }
+                                self.mode = Mode::Normal;
+                                self.refresh = true;
+                            } else {
+                                self.clipboard.push(self.buffer[self.cursor_index]);
+                            }
+                        }
+                        KeyCode::Char('p') => {
+                            for n in 0..self.clipboard.len() {
+                                if self.cursor_index + n < self.buffer.len() {
+
+                                    self.buffer[self.cursor_index + n] = self.clipboard[n];
                                 }
                             }
                             self.refresh = true;
                         }
+                        KeyCode::Char('v') => {
+                            self.cursor_start = self.cursor_index;
+                            self.mode = Mode::Selection;
+                            self.refresh = true;
+                        }
+                        KeyCode::Char('w') => {
+                            let mut f = File::create(&self.file_name).unwrap();
+                            f.write(&self.buffer).expect("impossible to write file");
+                        }
+                        KeyCode::Char('J') => {
+                            self.mode = Mode::Jump;
+                            self.refresh = true;
+                        }
+                        KeyCode::Esc => {
+                            self.nibble_index = 0;
+                            self.mode = Mode::Normal;
+                            self.refresh = true;
+                        }
+                        _ => {}
+                    }
+            },
+            Mode::Edit => {
+                if let KeyCode::Char(k) = key_event.code {
+                    if k as u8 >= 48 && k as u8 <= 57 {
+                        let value = k as u8 - 48;
+
+                        write_nibble(
+                            &mut self.buffer,
+                            self.cursor_index % 16 + 16 * (self.cursor_index / 16),
+                            value,
+                            self.nibble_index,
+                        );
+                        self.nibble_index += 1;
+                        if self.nibble_index > 1 {
+                            self.nibble_index = 0;
+                            if self.cursor_index < self.buffer.len() - 1 {
+                                self.cursor_index += 1;
+                            }
+                        }
+                        self.refresh = true;
+                    } else if k as u8 >= 97 && k as u8 <= 102 {
+                        let value = k as u8 - 87;
+                        write_nibble(
+                            &mut self.buffer,
+                            self.cursor_index % 16 + 16 * (self.cursor_index / 16),
+                            value,
+                            self.nibble_index,
+                        );
+                        self.nibble_index += 1;
+                        if self.nibble_index > 1 {
+                            self.nibble_index = 0;
+                            if self.cursor_index < self.buffer.len() - 1 {
+                                self.cursor_index += 1;
+                            }
+                        }
+                        self.refresh = true;
                     }
                 }
-                _ => {}
-            }
-        }
-        if self.jump_mode {
-
-            // Process commands
-            match event {
-                Event::Key(e) => match e.code {
+                match key_event.code {
                     KeyCode::Esc => {
-                        self.jump_mode = false;
+                        self.mode = Mode::Normal;
+                        self.refresh = true;
+                    }
+                    KeyCode::Char('q') => self.exit = true,
+                    _ => {}
+                }
+
+            },
+            Mode::Selection => {
+                match key_event.code {
+                    KeyCode::Esc => {
+                        self.mode = Mode::Normal;
+                        self.refresh = true;
+                    }
+                    KeyCode::Char('q') => self.exit = true,
+                    KeyCode::Char('h') | KeyCode::Left => {
+                        if self.cursor_index > 0 {
+                            self.cursor_index -= 1;
+                            self.refresh = true;
+                        }
+                    }
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        if self.cursor_index < self.buffer.len() - 16 {
+                            self.cursor_index += 16;
+                            self.refresh = true;
+                        }
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if self.cursor_index >= 16 {
+                            self.cursor_index -= 16;
+                            self.refresh = true;
+                        }
+                    }
+                    KeyCode::Char('l') | KeyCode::Right => {
+                        if self.cursor_index < self.buffer.len() - 1 {
+                            self.cursor_index += 1;
+                            self.refresh = true;
+                        }
+                    }
+                    _ => {}
+                }
+
+            },
+            Mode::Jump => {
+                // Process commands
+                match key_event.code {
+                    KeyCode::Esc => {
+                        self.mode = Mode::Normal;
                         self.refresh = true;
                     }
                     KeyCode::Char('q') => self.exit = true,
                     KeyCode::Enter => {
                        self.cursor_index = self.jump_adress as usize;
                        self.jump_adress = 0;
-                       self.jump_mode = false;
+                       self.mode = Mode::Normal;
                        self.refresh = true;
                     }
                     KeyCode::Backspace => {
@@ -139,172 +320,28 @@ impl Editor {
                     }
                     _ => {}
                 }
-                _ => {}
-            }
 
 
-            // Process the adress input 
-            match event {
-                Event::Key(e) => {
-                    if let KeyCode::Char(k) = e.code {
+                // Process the adress input 
+                if let KeyCode::Char(k) = key_event.code {
 
-                        // For digit 0 to 9 
-                        if k as u32 >= 48 && k as u32 <= 57 {
-                            let value = k as u32 - 48;
-                            self.jump_adress <<= 4;
-                            self.jump_adress += value;
-                            
-                        }
-                        // For digit a to f
-                        else if k as u32 >= 97 && k as u32 <= 102 {
-                            let value = k as u32 - 87;
-                            self.jump_adress <<= 4;
-                            self.jump_adress += value;
-                        }
-                        self.refresh = true;
+                    // For digit 0 to 9 
+                    if k as u32 >= 48 && k as u32 <= 57 {
+                        let value = k as u32 - 48;
+                        self.jump_adress <<= 4;
+                        self.jump_adress += value;
+                        
                     }
+                    // For digit a to f
+                    else if k as u32 >= 97 && k as u32 <= 102 {
+                        let value = k as u32 - 87;
+                        self.jump_adress <<= 4;
+                        self.jump_adress += value;
+                    }
+                    self.refresh = true;
                 }
-                _ => {}
-            }
-
-        }
-        else {
-            match event {
-                Event::Key(e) => match e.code {
-                    KeyCode::Char('q') => self.exit = true,
-                    KeyCode::Char('h') | KeyCode::Left => {
-                        if self.cursor_index > 0 {
-                            self.nibble_index = 0;
-                            self.cursor_index -= 1;
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('j') | KeyCode::Down => {
-                        if self.cursor_index < self.buffer.len() - 16 {
-                            self.cursor_index += 16;
-                            self.nibble_index = 0;
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('k') | KeyCode::Up => {
-                        if self.cursor_index >= 16 {
-                            self.nibble_index = 0;
-                            self.cursor_index -= 16;
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('l') | KeyCode::Right => {
-                        if self.cursor_index < self.buffer.len() - 1 {
-                            self.nibble_index = 0;
-                            self.cursor_index += 1;
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('(') => {
-                        let line = self.cursor_index / 16;
-                        self.cursor_index = line * 16;
-                        self.nibble_index = 0;
-                        self.refresh = true;
-                    }
-                    KeyCode::Char(')') => {
-                        let line = self.cursor_index / 16;
-                        self.cursor_index = line * 16 + 15;
-                        self.nibble_index = 0;
-                        self.refresh = true;
-                    }
-                    KeyCode::Char('b') => {
-                        if self.page > 0 {
-
-                            self.page -= 1;
-                            self.cursor_index -= PAGE_SIZE;
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('n') => {
-                        if self.page < self.buffer.len() / PAGE_SIZE {
-                            self.page += 1;
-                            self.cursor_index += PAGE_SIZE;
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('g') => {
-                        self.cursor_index = 0;
-                        self.refresh = true;
-                        self.nibble_index = 0;
-                    }
-                    KeyCode::Char('G') => {
-                        self.cursor_index = self.buffer.len() - 1;
-                        self.nibble_index = 0;
-                        self.refresh = true;
-                    }
-                    KeyCode::Char('i') => {
-                        self.edit_mode = true;
-                        self.selection_mode = false;
-                        self.refresh = true;
-                    }
-                    KeyCode::Char('a') => {
-                        self.buffer.insert(self.cursor_index + 1, 0);
-                        self.refresh = true;
-                    }
-                    KeyCode::Char('x') => {
-                        if self.buffer.len() > 0 {
-                            self.clipboard.clear();
-                            self.clipboard.push(self.buffer[self.cursor_index]);
-                            self.buffer.remove(self.cursor_index);
-                            self.refresh = true;
-                        }
-                    }
-                    KeyCode::Char('y') => {
-                        self.clipboard.clear();
-                        if self.selection_mode {
-                            let clipboard_range = self.cursor_index - self.cursor_start + 1;
-                            for n in 0..clipboard_range {
-                                self.clipboard.push(self.buffer[self.cursor_index - (clipboard_range - 1 - n)]);
-                            }
-                            self.selection_mode = false;
-                            self.refresh = true;
-                        } else {
-                            self.clipboard.push(self.buffer[self.cursor_index]);
-                        }
-                    }
-                    KeyCode::Char('p') => {
-                        for n in 0..self.clipboard.len() {
-                            if self.cursor_index + n < self.buffer.len() {
-
-                                self.buffer[self.cursor_index + n] = self.clipboard[n];
-                            }
-                        }
-                        self.refresh = true;
-                    }
-                    KeyCode::Char('v') => {
-                        self.cursor_start = self.cursor_index;
-                        self.selection_mode = true;
-                        self.refresh = true;
-                    }
-                    KeyCode::Char('w') => {
-                        let mut f = File::create(&self.file_name).unwrap();
-                        f.write(&self.buffer).expect("impossible to write file");
-                    }
-                    KeyCode::Char('J') => {
-                        self.jump_mode = true;
-                        self.refresh = true;
-                    }
-                    KeyCode::Esc => {
-                        self.nibble_index = 0;
-                        self.edit_mode = false;
-                        self.selection_mode = false;
-                        self.refresh = true;
-                    }
-                    _ => {}
-                },
-                _ => {}
             }
         }
-        if self.cursor_index >= self.buffer.len() {
-            self.cursor_index = self.buffer.len() - 1;
-        }
-
-
 
         self.cursor_index = cmp::max(0, self.cursor_index);
         self.cursor_index = cmp::min(self.cursor_index, self.buffer.len() - 1);
@@ -317,7 +354,53 @@ impl Editor {
     }
 
     pub fn render(&mut self, stdout: &mut Stdout) -> io::Result<()> {
+        self.refresh = false;
+        let color_profile: ColorProfile;
+        match self.mode {
+            Mode::Normal => {
+                color_profile = ColorProfile {
+                    ascii_fg: Color::DarkYellow,
+                    cursor_fg: Color::DarkGrey,
+                    cursor_bg: Color::Red,
+                    selection_fg: Color::DarkGrey,
+                    selection_bg: Color::DarkYellow
 
+                }
+            },
+            Mode::Edit => {
+
+                color_profile = ColorProfile {
+                    ascii_fg: Color::DarkYellow,
+                    cursor_fg: Color::DarkGrey,
+                    cursor_bg: Color::Magenta,
+                    selection_fg: Color::DarkGrey,
+                    selection_bg: Color::DarkYellow
+
+                }
+            },
+            Mode::Jump => {
+
+                color_profile = ColorProfile {
+                    ascii_fg: Color::DarkYellow,
+                    cursor_fg: Color::DarkGrey,
+                    cursor_bg: Color::Magenta,
+                    selection_fg: Color::DarkGrey,
+                    selection_bg: Color::DarkYellow
+
+                }
+            },
+            Mode::Selection => { 
+
+                color_profile = ColorProfile {
+                    ascii_fg: Color::DarkYellow,
+                    cursor_fg: Color::DarkGrey,
+                    cursor_bg: Color::Magenta,
+                    selection_fg: Color::DarkGrey,
+                    selection_bg: Color::DarkYellow
+
+                }
+            }
+        }
         stdout.queue(Clear(ClearType::All))?
         .queue(cursor::MoveTo(0,0))?;
 
@@ -335,7 +418,8 @@ impl Editor {
         queue!(
             stdout,
             cursor::MoveToNextLine(2))?;
-        if self.edit_mode {
+
+        if self.mode == Mode::Edit {
             queue!(
                 stdout,
                 cursor::MoveToColumn(30),
@@ -345,10 +429,13 @@ impl Editor {
         queue!(
             stdout,
             cursor::MoveToNextLine(1),
+            PrintStyledContent(format!("File {}: ", self.id).green()),
+            PrintStyledContent(format!("{}", self.file_name).magenta()),
+            cursor::MoveToNextLine(1),
             PrintStyledContent("Size : ".green()),
             PrintStyledContent(format!("{} bytes", self.buffer.len()).magenta()),
             PrintStyledContent("  -  Page : ".green()),
-            PrintStyledContent(format!("{} / {}", self.page, self.buffer.len() / PAGE_SIZE).magenta()),
+            PrintStyledContent(format!("{} / {}", self.page + 1 , self.buffer.len() / PAGE_SIZE + 1).magenta()),
             PrintStyledContent("  -  Address : ".green()),
             PrintStyledContent(format!("{:08x}", self.cursor_index).magenta()),
             cursor::MoveToNextLine(1)
@@ -364,22 +451,22 @@ impl Editor {
                 stdout.queue(PrintStyledContent(format!("{:08x} : ", i).green()))?;
             }
 
-            if i == self.cursor_index && !self.edit_mode && !self.selection_mode {
-                stdout.queue(SetColors(Colors::new(DarkGrey, Red)))?;
-            } else if i == self.cursor_index && self.edit_mode && !self.selection_mode {
-                stdout.queue(SetColors(Colors::new(DarkGrey, DarkYellow)))?;
-            } else if !self.edit_mode && !self.selection_mode && is_printable_code(self.buffer[i]) {
-                stdout.queue(SetColors(Colors::new(DarkYellow, Reset)))?;
-            } else if self.selection_mode && i >= self.cursor_start && i <= self.cursor_index {
-                stdout.queue(SetColors(Colors::new(White, Green)))?;
-            } else if self.edit_mode && is_printable_code(self.buffer[i]) {
+            if i == self.cursor_index {
+                stdout.queue(SetColors(Colors::new(color_profile.cursor_fg, color_profile.cursor_bg)))?;
+            } else if is_printable_code(self.buffer[i]) {
+                stdout.queue(SetColors(Colors::new(color_profile.ascii_fg, Reset)))?;
+            } else if self.mode == Mode::Selection && i >= self.cursor_start && i <= self.cursor_index {
+                stdout.queue(SetColors(Colors::new(
+                            color_profile.selection_fg,
+                            color_profile.selection_bg)))?;
+            } else if self.mode == Mode::Edit && is_printable_code(self.buffer[i]) {
                 stdout.queue(SetColors(Colors::new(DarkGreen, Reset)))?;
             } else {
                 stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
             }
             stdout.queue(Print(format!("{:02x}", self.buffer[i])))?
-            .queue(SetColors(Colors::new(Reset, Reset)))?
-            .queue(Print(" "))?;
+                .queue(SetColors(Colors::new(Reset, Reset)))?
+                .queue(Print(" "))?;
 
 
             // Ascii  Side bar
@@ -397,10 +484,12 @@ impl Editor {
                         };
 
                         if line_index * 16 + c == self.cursor_index {
-                            stdout.queue(SetColors(Colors::new(DarkGrey, Red)))?
+                            stdout.queue(SetColors(Colors::new( Reset, Reset)))?
                                 .queue(Print(format!("{}", displayed_char)))?;
                         } else if is_printable_code(self.buffer[line_index * 16 + c]) {
-                            stdout.queue(SetColors(Colors::new(DarkYellow, Reset)))?
+                            stdout.queue(SetColors(Colors::new(
+                                        Color::DarkYellow,
+                                        Reset)))?
                                 .queue(Print(format!("{}", displayed_char)))?;
                         } else {
                             stdout.queue(SetColors(Colors::new(Reset, Reset)))?
@@ -413,7 +502,7 @@ impl Editor {
                 stdout.queue(cursor::MoveToNextLine(1))?;
             }
         }
-        if self.jump_mode {
+        if self.mode == Mode::Jump {
             stdout.queue(cursor::MoveToNextLine(1))?
                 .queue(cursor::MoveToColumn(20))?
                 .queue(PrintStyledContent("Jump to ".magenta()))?
@@ -424,6 +513,7 @@ impl Editor {
     }
 
 }
+
 fn write_nibble(buffer: &mut Vec<u8>, position: usize, value: u8, nibble_hl: u8) {
     let nibble_bits: u8 = value << 4 * (1 - nibble_hl);
     let mask: u8 = 0x0F << 4 * nibble_hl;
