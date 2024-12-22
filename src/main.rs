@@ -2,11 +2,9 @@ use std::cmp;
 use std::env;
 use std::io;
 
-
 mod editor;
+use crossterm::terminal;
 use editor::Editor;
-
-
 
 use crossterm::{
     cursor,
@@ -29,7 +27,8 @@ fn main() -> io::Result<()> {
     }
 
     let _ = enable_raw_mode();
-    editors[current_editor].render(&mut stdout, show_title)?;
+    let size = terminal::size()?;
+    editors[current_editor].render(&mut stdout, show_title, size)?;
     while !editors[current_editor].exit {
         let event = read()?;
         match event {
@@ -46,7 +45,7 @@ fn main() -> io::Result<()> {
                 } 
                 else if e.code == KeyCode::Tab {
                     show_title = !show_title;
-                    editors[current_editor].render(&mut stdout, show_title)?;
+                    editors[current_editor].render(&mut stdout, show_title, size)?;
 
                 } else {
                     editors[current_editor].update(e);
@@ -57,7 +56,7 @@ fn main() -> io::Result<()> {
             }
         }
         if editors[current_editor].refresh {
-            editors[current_editor].render(&mut stdout, show_title)?;
+            editors[current_editor].render(&mut stdout, show_title, size)?;
         }
     }
 

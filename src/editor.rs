@@ -136,7 +136,7 @@ impl Editor {
                             self.refresh = true;
                         }
                         KeyCode::Char(']') => {
-                            self.cursor_index = self.page * self.page_size + 0xff;
+                            self.cursor_index = self.page * self.page_size + self.page_size - 1;
                             self.nibble_index = 0;
                             self.refresh = true;
                         }
@@ -363,8 +363,8 @@ impl Editor {
 
     }
 
-    pub fn render(&mut self, stdout: &mut Stdout, show_title: bool) -> io::Result<()> {
-        self.terminal_height = terminal::size().unwrap().1 as usize;
+    pub fn render(&mut self, stdout: &mut Stdout, show_title: bool, size: (u16, u16)) -> io::Result<()> {
+        self.terminal_height = terminal::size()?.1 as usize;
         if show_title {
             self.page_size = (self.terminal_height - 12) * 16;
         } else {
