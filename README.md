@@ -15,7 +15,7 @@ rHexeD is a small hex editor using the awesome [Crossterm](https://github.com/cr
 
 
 
-![rhexed](https://github.com/LittleB0xes/rhexed/blob/main/screenshots/screenshot_1.png | width=500)
+![rhexed](https://github.com/LittleB0xes/rhexed/blob/main/screenshots/screenshot_1.png)
 
 ## Usage
 You can work on one file
