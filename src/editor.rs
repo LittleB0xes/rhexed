@@ -4,6 +4,7 @@ use std::{cmp, usize};
 
 use crossterm::event::KeyEvent;
 use crossterm::style::{Color, SetColors};
+use crossterm::terminal;
 use crossterm::{
     cursor,
     event::KeyCode,
@@ -56,12 +57,15 @@ pub struct Editor {
     buffer: Vec<u8>,
     jump_adress: u32,
     file_name: String,
+    terminal_height: usize,
+    page_size: usize
 
 }
 
 impl Editor {
     pub fn new(file_name: &String, id: usize) -> Editor {
         let mut f = File::open(file_name).unwrap();
+        let terminal_height = terminal::size().unwrap().1 as usize;
 
         let mut buf: Vec<u8> = Vec::new();
         f.read_to_end(&mut buf).unwrap();
@@ -78,10 +82,14 @@ impl Editor {
             buffer: buf,
             jump_adress: 0,
             file_name: file_name.clone(),
+            terminal_height,
+            page_size: (terminal_height - 12) * 16,
         }
     }
 
     pub fn update(&mut self, key_event: KeyEvent) {
+        self.terminal_height = terminal::size().unwrap().1 as usize;
+        self.page_size = (self.terminal_height - 12) * 16;
         match self.mode {
             Mode::Normal =>{
                     match key_event.code {
@@ -125,12 +133,12 @@ impl Editor {
                             self.refresh = true;
                         }
                         KeyCode::Char('[') => {
-                            self.cursor_index = self.page * PAGE_SIZE;
+                            self.cursor_index = self.page * self.page_size;
                             self.nibble_index = 0;
                             self.refresh = true;
                         }
                         KeyCode::Char(']') => {
-                            self.cursor_index = self.page * PAGE_SIZE + 0xff;
+                            self.cursor_index = self.page * self.page_size + 0xff;
                             self.nibble_index = 0;
                             self.refresh = true;
                         }
@@ -138,14 +146,14 @@ impl Editor {
                             if self.page > 0 {
 
                                 self.page -= 1;
-                                self.cursor_index -= PAGE_SIZE;
+                                self.cursor_index -= self.page_size;
                                 self.refresh = true;
                             }
                         }
                         KeyCode::Char('n') => {
-                            if self.page < self.buffer.len() / PAGE_SIZE {
+                            if self.page < self.buffer.len() / self.page_size {
                                 self.page += 1;
-                                self.cursor_index += PAGE_SIZE;
+                                self.cursor_index += self.page_size;
                                 self.refresh = true;
                             }
                         }
@@ -350,8 +358,8 @@ impl Editor {
         self.cursor_index = cmp::max(0, self.cursor_index);
         self.cursor_index = cmp::min(self.cursor_index, self.buffer.len() - 1);
 
-        if self.cursor_index >= (self.page + 1) * PAGE_SIZE || self.cursor_index < self.page * PAGE_SIZE {
-            self.page = self.cursor_index / PAGE_SIZE;
+        if self.cursor_index >= (self.page + 1) * self.page_size || self.cursor_index < self.page * self.page_size {
+            self.page = self.cursor_index / self.page_size;
             self.refresh = true;
         }
 
@@ -439,15 +447,15 @@ impl Editor {
             PrintStyledContent("Size : ".green()),
             PrintStyledContent(format!("{} bytes", self.buffer.len()).magenta()),
             PrintStyledContent("  -  Page : ".green()),
-            PrintStyledContent(format!("{} / {}", self.page + 1 , self.buffer.len() / PAGE_SIZE + 1).magenta()),
+            PrintStyledContent(format!("{} / {}", self.page + 1 , self.buffer.len() / self.page_size + 1).magenta()),
             PrintStyledContent("  -  Address : ".green()),
             PrintStyledContent(format!("{:08x}", self.cursor_index).magenta()),
             cursor::MoveToNextLine(1)
 
             )?;
 
-        let limit: usize = cmp::min(self.buffer.len(), (self.page + 1) * PAGE_SIZE);
-        for i in (self.page * PAGE_SIZE)..limit {
+        let limit: usize = cmp::min(self.buffer.len(), (self.page + 1) * self.page_size);
+        for i in (self.page * self.page_size)..limit {
             if i == 0 {
                 stdout.queue(PrintStyledContent("00000000 : ".green()))?;
             }
