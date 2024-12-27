@@ -15,7 +15,7 @@ impl Editor {
                 }
             }
             KeyCode::Char('j') | KeyCode::Down => {
-                if self.cursor_index < self.buffer.len() - 16 {
+                if self.buffer.len() > 16 && self.cursor_index < self.buffer.len() - 16 {
                     self.cursor_index += 16;
                     self.nibble_index = 0;
                     self.refresh = true;
@@ -85,7 +85,7 @@ impl Editor {
                 self.refresh = true;
             }
             KeyCode::Char('a') => {
-                self.buffer.insert(self.cursor_index + 1, 0);
+                self.buffer.insert(self.cursor_index, 0);
                 self.refresh = true;
             }
             KeyCode::Char('x') => {

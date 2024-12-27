@@ -45,6 +45,34 @@ impl Editor {
                 self.refresh = true;
             }
             KeyCode::Char('q') => self.exit = true,
+            KeyCode::Char('h') | KeyCode::Left => {
+                if self.cursor_index > 0 {
+                    self.nibble_index = 0;
+                    self.cursor_index -= 1;
+                    self.refresh = true;
+                }
+            }
+            KeyCode::Char('j') | KeyCode::Down => {
+                if self.cursor_index < self.buffer.len() - 16 {
+                    self.cursor_index += 16;
+                    self.nibble_index = 0;
+                    self.refresh = true;
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                if self.cursor_index >= 16 {
+                    self.nibble_index = 0;
+                    self.cursor_index -= 16;
+                    self.refresh = true;
+                }
+            }
+            KeyCode::Char('l') | KeyCode::Right => {
+                if self.cursor_index < self.buffer.len() - 1 {
+                    self.nibble_index = 0;
+                    self.cursor_index += 1;
+                    self.refresh = true;
+                }
+            }
             _ => {}
         }
     }

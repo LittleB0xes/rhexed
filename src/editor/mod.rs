@@ -1,4 +1,4 @@
-use std::io::{self, Stdout, Write,Read};
+use std::io::{self, stdout, Read, Stdout, Write};
 use std::fs::File;
 use std::{cmp, usize};
 
@@ -59,6 +59,7 @@ pub struct Editor {
     nibble_index:u8,
     page: usize,
     clipboard: Vec<u8>,
+    search_pattern: Vec<u8>,
     buffer: Vec<u8>,
     jump_adress: u32,
     file_name: String,
@@ -84,6 +85,7 @@ impl Editor {
             nibble_index: 0,
             page: 0,
             clipboard: Vec::new(),
+            search_pattern: Vec::new(),
             buffer: buf,
             jump_adress: 0,
             file_name: file_name.clone(),
@@ -287,11 +289,21 @@ impl Editor {
                 stdout.queue(cursor::MoveToNextLine(1))?;
             }
         }
-        if self.mode == Mode::Jump {
-            stdout.queue(cursor::MoveToNextLine(1))?
-                .queue(cursor::MoveToColumn(20))?
-                .queue(PrintStyledContent("Jump to ".magenta()))?
-                .queue(PrintStyledContent(format!("0x{:08x}", self.jump_adress).magenta()))?;
+        match self.mode {
+            Mode::Jump => {
+                stdout.queue(cursor::MoveToNextLine(1))?
+                    .queue(cursor::MoveToColumn(20))?
+                    .queue(PrintStyledContent("Jump to ".magenta()))?
+                    .queue(PrintStyledContent(format!("0x{:08x}", self.jump_adress).magenta()))?;
+                }
+            Mode::Search => {
+                stdout.queue(cursor::MoveToNextLine(1))?
+                    .queue(cursor::MoveToColumn(1))?
+                    .queue(PrintStyledContent("Search ".magenta()))?;
+
+            }
+
+            _ => {}
         }
         stdout.flush()?;
         Ok(())
