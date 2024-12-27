@@ -31,7 +31,7 @@ Some commands are available, and others will come later
 - N                 go to the next file
 - B                 go to the previous file
 - J                 go to a specified address
-- a                 insert a byte after cursor position
+- a                 insert a byte at cursor position
 - x                 cut a byte
 - y                 copy a byte or a range of selected bytes
 - p                 paste a byte or a range of selected bytes
