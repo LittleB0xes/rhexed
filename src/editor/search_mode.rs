@@ -9,6 +9,10 @@ impl Editor {
                 self.mode = Mode::Normal;
                 self.refresh = true;
             }
+            KeyCode::Char('?') => {
+                self.mode = Mode::Help;
+                self.refresh = true;
+            }
             _ => {}
         }
     }

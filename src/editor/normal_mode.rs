@@ -143,6 +143,10 @@ impl Editor {
                 self.reload();
                 self.refresh = true;
             }
+            KeyCode::Char('?') => {
+                self.mode = Mode::Help;
+                self.refresh = true;
+            }
             KeyCode::Esc => {
                 self.nibble_index = 0;
                 self.mode = Mode::Normal;

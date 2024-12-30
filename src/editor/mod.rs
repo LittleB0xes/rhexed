@@ -2,6 +2,7 @@ use std::io::{self, stdout, Read, Stdout, Write};
 use std::fs::File;
 use std::{cmp, usize};
 
+use crossterm::cursor::MoveTo;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::{Color, SetColors};
 use crossterm::terminal;
@@ -23,6 +24,7 @@ mod jump_mode;
 mod selection_mode;
 mod search_mode;
 mod edit_ascii_mode;
+mod help_mode;
 
 const RHEXED: [&str; 6] = [
     "d8888b. db   db d88888b db    db d88888b d8888b.",
@@ -33,6 +35,34 @@ const RHEXED: [&str; 6] = [
     "88   YD YP   YP Y88888P YP    YP Y88888P Y8888D'",
 ];
 
+const HELP: [&str; 25] = [
+"      - hjkl or arrow     move                                            ",
+"      - g                 move to the beginning of the file               ",
+"      - G                 move to the end of the file                     ",
+"      - (                 move to the beginning of the line               ",
+"      - )                 move to the end of the line                     ",
+"      - [                 move to the beginning of the page               ",
+"      - ]                 move to the end of the page                     ",
+"      - n                 go to the next page                             ",
+"      - b                 go to the previous page                         ",
+"      - N                 go to the next file                             ",
+"      - B                 go to the previous file                         ",
+"      - J                 go to a specified address                       ",
+"      - a                 insert a byte at cursor position                ",
+"      - x                 cut a byte                                      ",
+"      - y                 copy a byte or a range of selected bytes        ",
+"      - p                 paste a byte or a range of selected bytes       ",
+"      - i                 insert mode                                     ",
+"      - I                 insert mode (in ascii)                          ",
+"      - <ESC>             quit insert mode                                ",
+"      - <TAB>             show / hide title                               ",
+"      - r                 reload file                                     ",
+"      - w                 write file                                      ",
+"      - q                 quit                                            ",
+"                                                                          ",
+"                        <ESC> or '?' to quit help                         "
+];
+
 #[derive(PartialEq)]
 pub enum Mode {
     Normal,
@@ -40,7 +70,8 @@ pub enum Mode {
     Edit,
     AsciiEdit,
     Selection,
-    Jump
+    Jump,
+    Help
 }
 
 struct ColorProfile {
@@ -117,6 +148,9 @@ impl Editor {
             Mode::AsciiEdit => {
                 self.edit_ascii_input(key_event.code);
             }
+            Mode::Help => {
+                self.help_inputs(key_event.code);
+            }
         }
 
         self.cursor_index = cmp::max(0, self.cursor_index);
@@ -137,7 +171,7 @@ impl Editor {
         }
         self.refresh = false;
         let color_profile = match self.mode {
-            Mode::Normal | Mode::Search => {
+            Mode::Normal | Mode::Search | Mode::Help=> {
                 ColorProfile {
                     ascii_fg: DarkYellow,
                     cursor_fg: DarkGrey,
@@ -250,6 +284,7 @@ impl Editor {
 
             // Start address display
             if i % 16 == 0 {
+                stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
                 stdout.queue(PrintStyledContent(format!("{:08x} : ", i).green()))?;
             }
 
@@ -314,13 +349,32 @@ impl Editor {
 
                         stdout.queue(Print(format!("{}", displayed_char)))?;
                         // Reset Colors
-                        stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
+                        // stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
                     }
                 }
                 stdout.queue(cursor::MoveToNextLine(1))?;
             }
+        } 
+
+        if self.mode == Mode::Help {
+            let mut line: u16 = 0;
+            if show_title && self.terminal_height > 20 {
+                for line_text in HELP.iter() {
+                    queue!(
+                        stdout,
+                        cursor::MoveTo(5, line + 5),
+                        PrintStyledContent(line_text.white()),
+                    )?;
+                    line += 1;
+                }
+                queue!(
+                    stdout,
+                    cursor::MoveToNextLine(2))?;
+            }
+
         }
 
+        stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
         stdout.flush()?;
         Ok(())
     }

@@ -44,6 +44,10 @@ impl Editor {
                 self.mode = Mode::Normal;
                 self.refresh = true;
             }
+            KeyCode::Char('?') => {
+                self.mode = Mode::Help;
+                self.refresh = true;
+            }
             KeyCode::Char('q') => self.exit = true,
             KeyCode::Char('h') | KeyCode::Left => {
                 if self.cursor_index > 0 {
