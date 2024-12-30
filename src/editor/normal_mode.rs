@@ -84,6 +84,10 @@ impl Editor {
                 self.mode = Mode::Edit;
                 self.refresh = true;
             }
+            KeyCode::Char('I') => {
+                self.mode = Mode::AsciiEdit;
+                self.refresh = true;
+            }
             KeyCode::Char('a') => {
                 self.buffer.insert(self.cursor_index, 0);
                 self.refresh = true;

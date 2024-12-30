@@ -2,7 +2,7 @@ use std::io::{self, stdout, Read, Stdout, Write};
 use std::fs::File;
 use std::{cmp, usize};
 
-use crossterm::event::KeyEvent;
+use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::{Color, SetColors};
 use crossterm::terminal;
 use crossterm::{
@@ -22,6 +22,7 @@ mod edit_mode;
 mod jump_mode;
 mod selection_mode;
 mod search_mode;
+mod edit_ascii_mode;
 
 const RHEXED: [&str; 6] = [
     "d8888b. db   db d88888b db    db d88888b d8888b.",
@@ -37,6 +38,7 @@ pub enum Mode {
     Normal,
     Search,
     Edit,
+    AsciiEdit,
     Selection,
     Jump
 }
@@ -112,6 +114,9 @@ impl Editor {
             Mode::Search => {
                 self.search_inputs(key_event.code);
             }
+            Mode::AsciiEdit => {
+                self.edit_ascii_input(key_event.code);
+            }
         }
 
         self.cursor_index = cmp::max(0, self.cursor_index);
@@ -141,7 +146,7 @@ impl Editor {
                     selection_bg: DarkYellow
                 }
             },
-            Mode::Edit => {
+            Mode::Edit | Mode::AsciiEdit => {
                 ColorProfile {
                     ascii_fg: DarkYellow,
                     cursor_fg: DarkGrey,
@@ -187,12 +192,38 @@ impl Editor {
                 cursor::MoveToNextLine(2))?;
         }
 
-        if self.mode == Mode::Edit {
-            queue!(
-                stdout,
-                cursor::MoveToColumn(30),
-                PrintStyledContent("-- EDIT --".magenta()),
+        match self.mode {
+            Mode::Edit => {
+                queue!(
+                    stdout,
+                    cursor::MoveToColumn(30),
+                    PrintStyledContent("-- EDIT --".magenta()),
                 )?;
+            }
+            Mode::AsciiEdit => {
+                queue!(
+                    stdout,
+                    cursor::MoveToColumn(27),
+                    PrintStyledContent("-- ASCII EDIT --".magenta()),
+                )?;
+            }
+            Mode::Jump => {
+                queue!(
+                    stdout,
+                    cursor::MoveToColumn(20),
+                    PrintStyledContent("Jump to ".magenta()),
+                    PrintStyledContent(format!("0x{:08x}", self.jump_adress).magenta())
+                    )?;
+                }
+            Mode::Search => {
+                queue!(
+                    stdout,
+                    cursor::MoveToColumn(20),
+                    PrintStyledContent("Search ".magenta())
+                )?;
+
+            }
+            _ => {}
         }
 
         // Header info data
@@ -289,22 +320,7 @@ impl Editor {
                 stdout.queue(cursor::MoveToNextLine(1))?;
             }
         }
-        match self.mode {
-            Mode::Jump => {
-                stdout.queue(cursor::MoveToNextLine(1))?
-                    .queue(cursor::MoveToColumn(20))?
-                    .queue(PrintStyledContent("Jump to ".magenta()))?
-                    .queue(PrintStyledContent(format!("0x{:08x}", self.jump_adress).magenta()))?;
-                }
-            Mode::Search => {
-                stdout.queue(cursor::MoveToNextLine(1))?
-                    .queue(cursor::MoveToColumn(1))?
-                    .queue(PrintStyledContent("Search ".magenta()))?;
 
-            }
-
-            _ => {}
-        }
         stdout.flush()?;
         Ok(())
     }
@@ -325,5 +341,5 @@ fn write_nibble(buffer: &mut Vec<u8>, position: usize, value: u8, nibble_hl: u8)
 }
 
 fn is_printable_code(c: u8) -> bool {
-    c >= 32 && c <= 126
+    (c >= 32 && c <= 126) || (c > 127 && c < 255)
 }

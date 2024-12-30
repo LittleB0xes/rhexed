@@ -36,6 +36,7 @@ Some commands are available, and others will come later
 - y                 copy a byte or a range of selected bytes
 - p                 paste a byte or a range of selected bytes
 - i                 insert mode
+- I                 insert mode (in ascii)
 - <ESC>             quit insert mode
 - <TAB>             show / hide title
 - r                 reload file
