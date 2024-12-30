@@ -42,5 +42,6 @@ Some commands are available, and others will come later
 - r                 reload file
 - w                 write file
 - q                 quit
+- ?                 help
 ```
 

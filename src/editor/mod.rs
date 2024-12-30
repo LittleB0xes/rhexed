@@ -35,7 +35,7 @@ const RHEXED: [&str; 6] = [
     "88   YD YP   YP Y88888P YP    YP Y88888P Y8888D'",
 ];
 
-const HELP: [&str; 25] = [
+const HELP: [&str; 26] = [
 "      - hjkl or arrow     move                                            ",
 "      - g                 move to the beginning of the file               ",
 "      - G                 move to the end of the file                     ",
@@ -59,6 +59,7 @@ const HELP: [&str; 25] = [
 "      - r                 reload file                                     ",
 "      - w                 write file                                      ",
 "      - q                 quit                                            ",
+"      - ?                 help                                            ",
 "                                                                          ",
 "                        <ESC> or '?' to quit help                         "
 ];
