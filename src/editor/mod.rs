@@ -311,7 +311,8 @@ impl Editor {
                 stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
             }
 
-            // Show seaarch result
+            // Show seaarch result with background highlight
+            // All the pattenr will be highlighted
             if self.search_pattern.len() != 0  && self.search_result.len() != 0 {
                 // Affichage des résultat de recherche
                 for s in 0..self.search_pattern.len() {
@@ -320,9 +321,7 @@ impl Editor {
                             stdout.queue(
                                 SetColors(Colors::new(
                                         color_profile.selection_fg,
-                                        color_profile.selection_bg
-                                ))
-                                )?;
+                                        color_profile.selection_bg)))?;
                         }
                         None => {}
                     }
