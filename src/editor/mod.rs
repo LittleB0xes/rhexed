@@ -2,7 +2,6 @@ use std::io::{self, stdout, Read, Stdout, Write};
 use std::fs::File;
 use std::{cmp, usize};
 
-use crossterm::cursor::MoveTo;
 use crossterm::event::{KeyCode, KeyEvent};
 use crossterm::style::{Color, SetColors};
 use crossterm::terminal;
@@ -94,6 +93,7 @@ pub struct Editor {
     page: usize,
     clipboard: Vec<u8>,
     search_pattern: Vec<u8>,
+    search_result: Vec<u32>,
     buffer: Vec<u8>,
     jump_adress: u32,
     file_name: String,
@@ -120,6 +120,7 @@ impl Editor {
             page: 0,
             clipboard: Vec::new(),
             search_pattern: Vec::new(),
+            search_result: Vec::new(),
             buffer: buf,
             jump_adress: 0,
             file_name: file_name.clone(),
@@ -251,10 +252,14 @@ impl Editor {
                     )?;
                 }
             Mode::Search => {
+                let mut searching_pattern: String = "".to_string();
+                for s in self.search_pattern.iter_mut() {
+                    searching_pattern = format!("{} {:02x}", searching_pattern, s);
+                }
                 queue!(
                     stdout,
                     cursor::MoveToColumn(20),
-                    PrintStyledContent("Search ".magenta())
+                    PrintStyledContent(format!("Search {}", searching_pattern).magenta())
                 )?;
 
             }
@@ -304,6 +309,34 @@ impl Editor {
                 stdout.queue(SetColors(Colors::new(DarkGreen, Reset)))?;
             } else {
                 stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
+            }
+
+            // Show seaarch result
+            if self.search_pattern.len() != 0  && self.search_result.len() != 0 {
+                // Affichage des résultat de recherche
+                for s in 0..self.search_pattern.len() {
+                    match self.search_result.iter().find(|res| **res + s as u32 == i as u32) {
+                        Some(_) => {
+                            stdout.queue(
+                                SetColors(Colors::new(
+                                        color_profile.selection_fg,
+                                        color_profile.selection_bg
+                                ))
+                                )?;
+                        }
+                        None => {}
+                    }
+                }
+            }
+
+
+            match self.search_result.iter().find(|c| (**c) as usize == i) {
+                Some(_) => {
+                    stdout.queue(SetColors(Colors::new(
+                            color_profile.selection_fg,
+                            color_profile.selection_bg)))?;
+                }
+                None => {}
             }
 
             // Then, hex code display

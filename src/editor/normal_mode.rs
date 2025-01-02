@@ -136,6 +136,7 @@ impl Editor {
                 self.refresh = true;
             }
             KeyCode::Char('s') => {
+                self.search_result = Vec::new();
                 self.mode = Mode::Search;
                 self.refresh = true;
             }
