@@ -19,6 +19,9 @@ impl Editor {
                 self.nibble_index = 0;
                 self.search();
                 self.mode = Mode::Normal;
+                if !self.search_result.is_empty() {
+                    self.cursor_index = self.search_result[0] as usize;
+                }
                 
                 self.refresh = true;
             }
@@ -60,6 +63,7 @@ impl Editor {
 
     fn search(&mut self) {
 
+        self.search_result.clear();
         for (i,_) in self.buffer.iter().enumerate() {
             let mut flag = true;
             'pat: for (j,_) in self.search_pattern.iter().enumerate() {

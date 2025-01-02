@@ -37,7 +37,9 @@ Some commands are available, and others will come later
 - p                 paste a byte or a range of selected bytes
 - i                 insert mode
 - I                 insert mode (in ascii)
-- s                 search bytes serie
+- s                 search bytes serie and go to the first result
+- >                 go to the next result
+- <                 go to th previous result
 - <ESC>             quit insert mode
 - <TAB>             show / hide title
 - r                 reload file

@@ -140,6 +140,20 @@ impl Editor {
                 self.mode = Mode::Search;
                 self.refresh = true;
             }
+            KeyCode::Char('>') => {
+                if !self.search_result.is_empty() {
+                    self.search_result.rotate_left(1);
+                    self.cursor_index = self.search_result[0] as usize;
+                    self.refresh = true;
+                }
+            }
+            KeyCode::Char('<') => {
+                if !self.search_result.is_empty() {
+                    self.search_result.rotate_right(1);
+                    self.cursor_index = self.search_result[0] as usize;
+                    self.refresh = true;
+                }
+            }
             KeyCode::Char('r') => {
                 self.reload();
                 self.refresh = true;
