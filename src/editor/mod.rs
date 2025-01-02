@@ -271,7 +271,16 @@ impl Editor {
             stdout,
             cursor::MoveToNextLine(1),
             PrintStyledContent(format!("File {}: ", self.id).green()),
-            PrintStyledContent(format!("{}", self.file_name).magenta()),
+            PrintStyledContent(format!("{}", self.file_name).magenta()))?;
+
+        if !self.search_pattern.is_empty() {
+            queue!(
+                stdout,
+                PrintStyledContent("    Search result : ".green()),
+                PrintStyledContent(format!("{}", self.search_result.len()).magenta()))?;
+        }
+        queue!(
+            stdout,
             cursor::MoveToNextLine(1),
             PrintStyledContent("Size : ".green()),
             PrintStyledContent(format!("{} bytes", self.buffer.len()).magenta()),
@@ -297,18 +306,20 @@ impl Editor {
             // Line of hex data display
             
             // First, color setting with context
+            let mut fg_color = Reset;
+            let mut bg_color = Reset;
+
+
             if i == self.cursor_index {
-                stdout.queue(SetColors(Colors::new(color_profile.cursor_fg, color_profile.cursor_bg)))?;
+                fg_color = color_profile.cursor_fg;
+                bg_color = color_profile.cursor_bg;
             } else if is_printable_code(self.buffer[i]) {
-                stdout.queue(SetColors(Colors::new(color_profile.ascii_fg, Reset)))?;
+                fg_color = color_profile.ascii_fg;
             } else if self.mode == Mode::Selection && i >= self.cursor_start && i <= self.cursor_index {
-                stdout.queue(SetColors(Colors::new(
-                            color_profile.selection_fg,
-                            color_profile.selection_bg)))?;
+                fg_color = color_profile.selection_fg;
+                bg_color = color_profile.selection_bg;
             } else if self.mode == Mode::Edit && is_printable_code(self.buffer[i]) {
-                stdout.queue(SetColors(Colors::new(DarkGreen, Reset)))?;
-            } else {
-                stdout.queue(SetColors(Colors::new(Reset, Reset)))?;
+                fg_color = DarkGreen;
             }
 
             // Show seaarch result with background highlight
@@ -318,25 +329,25 @@ impl Editor {
                 for s in 0..self.search_pattern.len() {
                     match self.search_result.iter().find(|res| **res + s as u32 == i as u32) {
                         Some(_) => {
-                            stdout.queue(
-                                SetColors(Colors::new(
-                                        color_profile.selection_fg,
-                                        color_profile.selection_bg)))?;
+                            fg_color = color_profile.selection_fg;
+                            bg_color = color_profile.selection_bg;
+                            if self.cursor_index == i {bg_color = color_profile.cursor_bg;}
                         }
                         None => {}
                     }
                 }
             }
 
+            stdout.queue(SetColors(Colors::new(fg_color, bg_color)))?;
 
-            match self.search_result.iter().find(|c| (**c) as usize == i) {
-                Some(_) => {
-                    stdout.queue(SetColors(Colors::new(
-                            color_profile.selection_fg,
-                            color_profile.selection_bg)))?;
-                }
-                None => {}
-            }
+            // match self.search_result.iter().find(|c| (**c) as usize == i) {
+            //     Some(_) => {
+            //         stdout.queue(SetColors(Colors::new(
+            //                 color_profile.selection_fg,
+            //                 color_profile.selection_bg)))?;
+            //     }
+            //     None => {}
+            // }
 
             // Then, hex code display
             stdout.queue(Print(format!("{:02x}", self.buffer[i])))?

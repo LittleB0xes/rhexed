@@ -17,7 +17,9 @@ impl Editor {
             }
             KeyCode::Enter => {
                 self.nibble_index = 0;
-                self.search();
+                if !self.search_pattern.is_empty() {
+                    self.search();
+                }
                 self.mode = Mode::Normal;
                 if !self.search_result.is_empty() {
                     self.cursor_index = self.search_result[0] as usize;
